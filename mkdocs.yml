@@ -78,6 +78,7 @@ plugins:
             Getting started: 快速開始
             Tools: 工具
             Backends: 後端
+            Case studies: 案例研究
             API reference: API 參考
             Contributing: 貢獻指南
             Changelog: 更新日誌
@@ -100,6 +101,7 @@ plugins:
             Getting started: 快速开始
             Tools: 工具
             Backends: 后端
+            Case studies: 案例研究
             API reference: API 参考
             Contributing: 贡献指南
             Changelog: 更新日志
@@ -124,6 +126,8 @@ nav:
       - manufacture: tools/manufacture.md
       - spatial: tools/spatial.md
   - Backends: backends.md
+  - Case studies:
+      - Variant prioritization: case-studies/variant-prioritization.md
   - API reference: api.md
   - Contributing: contributing.md
   - Changelog: changelog.md

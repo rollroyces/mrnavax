@@ -1,0 +1,13 @@
+gene,chrom,pos,ref,alt,label,pathogenicity,is_coding
+BRAF,chr7,140753336,T,A,BRAF V600E,pathogenic,true
+KRAS,chr12,25245350,C,A,KRAS G12D,pathogenic,true
+TP53,chr17,7675088,G,A,TP53 R175H,pathogenic,true
+APC,chr5,112839510,C,T,APC promoter regulatory variant,pathogenic,false
+TP53,chr17,7674229,C,T,TP53 promoter regulatory variant,pathogenic,false
+EGFR,chr7,55174014,G,A,EGFR L858R,pathogenic,true
+PIK3CA,chr3,178936091,G,A,PIK3CA E545K,pathogenic,true
+CDKN2A,chr9,21970953,C,T,CDKN2A regulatory variant,pathogenic,false
+KRAS,chr12,25245351,C,G,KRAS 3'UTR regulatory,uncertain,false
+BRAF,chr7,140453334,A,T,BRAF synonymous coding,benign,true
+APC,chr5,112841059,G,A,APC intronic benign,benign,false
+TP53,chr17,7674228,G,C,TP53 synonymous benign,benign,true

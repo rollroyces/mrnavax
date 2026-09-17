@@ -1472,6 +1472,76 @@ def _check_alphagenome_atlas() -> tuple[bool, str]:
     )
 
 
+@register("case_study.variant_prioritization")
+def _check_case_study() -> tuple[bool, str]:
+    """End-to-end: run the curated ClinVar variant set through
+    score_variant with both AlphaMissense (coding) and AlphaGenome
+    Atlas AVI (regulatory) wired up. Verify precision@K against
+    ground-truth pathogenicity labels.
+
+    This is the only check that exercises the FULL pipeline stack:
+    load → score → rank → compute precision@K. Catches integration
+    regressions that single-tool checks miss.
+    """
+    from .alphagenome_integration import MockRegulatoryVariantScorer
+    from .alphamissense_integration import build_test_index, lookup
+    from .case_study import (
+        load_clinvar_variants,
+        precision_at_k,
+        score_case_study_variants,
+        summarize_variant_set,
+    )
+    from .variant_scorer import score_variant
+
+    variants = load_clinvar_variants()
+    summary = summarize_variant_set(variants)
+    if summary["n_pathogenic"] == 0:
+        return False, "curated CSV has no pathogenic variants — case study broken"
+
+    idx = build_test_index()
+    mock_avi = MockRegulatoryVariantScorer()
+
+    def scorer(variant):
+        # The curated CSV is hg38-coordinates only; we use placeholder
+        # AAs (V/E) for coding variants and A/G for regulatory. The
+        # BLOSUM62 + AM/AVI signal still carries the priority.
+        if variant.is_coding:
+            wt, mut = "V", "E"
+        else:
+            wt, mut = "A", "G"
+        r = score_variant(
+            gene=variant.gene,
+            position=1,
+            wt_aa=wt,
+            mut_aa=mut,
+            chrom=variant.chrom,
+            ref_dna=variant.ref,
+            alt_dna=variant.alt,
+            uniprot_id=None,
+            am_lookup=lambda u, w, p, m: lookup(u, w, p, m, index=idx) if u else None,
+            avi_lookup=mock_avi.score_variant,
+        )
+        return {"score": r.normalized_score if r else 0.0}
+
+    scored = score_case_study_variants(variants, scorer)
+    triples = [(s["label"], s["score"], s["pathogenicity"]) for s in scored]
+    p_at_3 = precision_at_k(triples, k=3)
+
+    # Sanity: the case study must produce a non-trivial precision@3.
+    # With mock backends, top-3 should all be pathogenic (precision@3=1.0).
+    if p_at_3 < 0.66:
+        return False, (
+            f"precision@3 = {p_at_3:.3f}, expected ≥ 0.66 with mock backends"
+        )
+
+    return True, (
+        f"case study OK: {summary['n_total']} variants "
+        f"({summary['n_pathogenic']} pathogenic + {summary['n_benign']} benign + "
+        f"{summary['n_uncertain']} uncertain), scored and ranked; "
+        f"precision@3 = {p_at_3:.3f}"
+    )
+
+
 @register("variant.alphagenome_atlas_fixture")
 def _check_alphagenome_atlas_fixture() -> tuple[bool, str]:
     """Regression test against the bundled AlphaGenome Atlas API

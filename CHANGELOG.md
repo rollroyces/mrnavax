@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-09-17
+
+### Added
+
+- **Variant-prioritization case study** (`mrnavax/case_study.py`)
+  demonstrating the toolkit's end-to-end pipeline on a curated
+  ClinVar-style variant set. Includes:
+    - `mrnavax/examples/clinvar_curated.csv` — 12 curated variants
+      (8 pathogenic + 3 benign + 1 uncertain; mix of coding and
+      regulatory-region variants)
+    - `load_clinvar_variants()` — CSV loader with full schema
+      validation
+    - `score_case_study_variants()` — runs any scoring fn over
+      the variant set and returns ranked results
+    - `precision_at_k()` — precision@K computation with sorting
+    - `summarize_variant_set()` — counts by pathogenicity +
+      is_coding bucket
+- **End-to-end worked example** in
+  `docs/case-studies/variant-prioritization.md` showing how to:
+    - Load the curated CSV
+    - Run it through `score_variant` with both AlphaMissense
+      (coding) and AlphaGenome Atlas AVI (regulatory) wired up
+    - Compute precision@K against ground-truth labels
+    - Show that regulatory-region pathogenic variants make it
+      into the top-5 **specifically because AVI is wired in**
+- **New backend check `case_study.variant_prioritization`** —
+  exercises the full pipeline stack (load → score → rank →
+  precision@K) end-to-end and asserts precision@3 ≥ 0.66 with
+  mock backends.
+- **11 new unit tests** in `tests/test_case_study.py` covering
+  CSV loading, ClinVarVariant fields, precision_at_k
+  (empty input, k larger than n, sorting behavior), scoring
+  pipeline, and variant set summarization.
+- **mkdocs nav** gains a "Case studies" section with the
+  variant-prioritization page (3 locales translated).
+- Total tests: **229** (was 218). Total backend checks: **29**
+  (was 28).
+
+### Worked-example result
+
+With mock backends (no API key needed, runs in CI):
+
+```
+Loaded 12 curated variants
+Summary: {'n_total': 12, 'n_pathogenic': 8, 'n_benign': 3,
+          'n_uncertain': 1, 'n_pathogenic_coding': 5,
+          'n_pathogenic_regulatory': 3}
+
+precision@3 = 1.000  (top-3 are all pathogenic)
+precision@5 = 0.800  (4 of top-5 pathogenic)
+precision@8 = 0.625  (5 of top-8 pathogenic)
+```
+
+### Why this matters
+
+The previous releases shipped the Atlas integration but lacked a
+**reproducible demonstration** of what the pipeline actually does
+on real-world variants. Users had no way to see precision@K, no way
+to confirm the routing works end-to-end, and no entry point for
+swapping in their own variants. The case study fixes all three:
+
+* Shows users the prioritization output looks like on a known variant set
+* Provides a `load_clinvar_variants()` + `score_case_study_variants()`
+  pair they can extend with their own data
+* Catches full-stack regressions in CI (the new backend check
+  exercises load → score → rank → precision@K in a single shot)
+
 ## [0.18.0] - 2026-09-17
 
 ### Added
