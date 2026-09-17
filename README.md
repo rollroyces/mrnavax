@@ -2,11 +2,11 @@
 
 > Practical Python tools for the AI-leverage layers in mRNA cancer therapy.
 > Stdlib-only core, eight runnable tools, nine real-model adapters behind
-> Protocol contracts, three documentation locales, 205 tests, 26 backend
+> Protocol contracts, three documentation locales, 210 tests, 27 backend
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.16.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.17.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -265,6 +265,28 @@ mrnavax variant-regulatory --csv variants.csv --backend alphagenome
 
 # Mock: same shape, stdlib only
 mrnavax variant-regulatory --csv variants.csv --backend mock
+```
+
+**Integrated into `score_variant`:** when you supply DNA coordinates
+(`chrom`, `ref_dna`, `alt_dna`) plus an `avi_lookup` callable, the
+same `score_variant()` entry point that drives the scrna pipeline
+auto-routes coding-region variants to AlphaMissense (dominant signal)
+and non-coding regulatory variants to AlphaGenome Atlas (dominant
+signal). A single CSV with both kinds of variants scores them all
+through one function:
+
+```bash
+# variants.csv has: gene,position,wt_aa,mut_aa,chrom,ref_dna,alt_dna
+mrnavax scrna \
+    --expression cells.csv \
+    --variants variants.csv \
+    --proteins proteins.fasta \
+    --tumor-markers TP53,KRAS,BRAF \
+    --variant-filter-top-fraction 0.4 \
+    --out report.json
+# report.json includes variant_scores for every variant + a note
+# mentioning "AlphaGenome Atlas AVI scores used for non-coding
+# regulatory variants"
 ```
 
 ### Other real-model integrations

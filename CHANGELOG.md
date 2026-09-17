@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-09-17
+
+### Added
+
+- **scRNA pipeline auto-wires AlphaGenome Atlas AVI** when variant CSVs
+  carry DNA coordinates (`chrom`, `ref_dna`, `alt_dna`). The pipeline
+  no longer needs the user to call a separate `variant-regulatory` step
+  for regulatory-region variants — both coding and non-coding
+  regulatory variants flow through `run_pipeline()` end-to-end.
+- **`variant_scores` populated even without a filter** — when DNA
+  coordinates are present, every variant gets a per-variant score in
+  `PipelineReport.variant_scores` regardless of whether the user set
+  `--variant-filter-top-fraction`. Previously this dict was empty
+  unless filtering was requested.
+- **Pipeline note mentions Atlas integration** — when DNA coordinates
+  are present, `PipelineReport.note` now includes "AlphaGenome Atlas
+  AVI scores used for non-coding regulatory variants". When no DNA
+  coordinates are present (legacy CSV), the note correctly omits the
+  mention.
+- **5 new unit tests** in `tests/test_scrna_avi.py` covering
+  load_variants with DNA fields, run_pipeline note surfacing,
+  variant_scores population, and end-to-end runs with and without
+  DNA coords.
+- **New backend check `scrna.pipeline_with_avi`** — verifies the
+  full integration: DNA-coord variants → variant_scores populated +
+  note mentions Atlas; legacy CSV (no DNA coords) → note correctly
+  omits Atlas mention. Total backend checks: **27/27** (was 26/26).
+
+### Why this matters
+
+The v0.16.0 release shipped `score_variant()` accepting AVI
+parameters. v0.17.0 extends that to the full scrna pipeline:
+users can now submit a single CSV with mixed coding + regulatory
+variants and get both kinds scored through one `run_pipeline()` call.
+The pipeline emits a structured report showing per-variant scores
+across the entire genome — not just the 2% AlphaMissense covers.
+
 ## [0.16.0] - 2026-09-17
 
 ### Added

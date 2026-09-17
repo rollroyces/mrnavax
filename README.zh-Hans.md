@@ -5,7 +5,7 @@
 > Protocol 契约之后，三份文档语种，205 个测试，26 项后端完整性检查。
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.16.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.17.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/zh-Hans/)
@@ -234,12 +234,48 @@ print(r["score"])  # 0.0–1.0
 ### `TrialGPT` + `Sim-ICL`（Jin 2024 / Fung 2026）
 
 每条标准的患者-试验资格配对。Sim-ICL 通过 TF-IDF 余弦相似度
-（而非随机抽样）挑选 top-K 示范例子——对应论文发现：序列相似的
-示范例子表现优于随机 few-shot。
+（而非随机抽样）挑选 top-K 示范范例——对应论文发现：序列相似的
+示范范例表现优于随机 few-shot。
 
 ```bash
 mrnavax trial --patient patient.txt --trials trials.jsonl \
     --matcher trialgpt-simicl --top-k 10
+```
+
+### `AlphaGenome Atlas`（Avsec et al., *Nature* 2026）
+
+预先计算的调控变异影响（AVI）评分，覆盖人类基因组中全部 **90 亿
+个可能的单核苷酸变异**。AlphaMissense（Cheng et al. 2023）评分
+**编码区** missense 变异；AlphaGenome Atlas 评分**非编码调控区**
+变异——涵盖 AlphaMissense 沉默的 98% 基因组。适配器通过 subprocess
+调用官方 `alphagenome` Python 软件包（受 `[variant-alphagenome]`
+extra 保护；非商业用途依 Google DeepMind 条款）。
+
+```bash
+# 真实：已设置 ALPHAGENOME_API_KEY + 安装 [variant-alphagenome]
+mrnavax variant-regulatory --csv variants.csv --backend alphagenome
+
+# Mock：相同形状，仅标准库
+mrnavax variant-regulatory --csv variants.csv --backend mock
+```
+
+**集成进 `score_variant`：** 当您提供 DNA 坐标（`chrom`、`ref_dna`、
+`alt_dna`）与 `avi_lookup` 可调用对象时，驱动 scrna 管线的同一个
+`score_variant()` 入口会自动将编码区变异路由到 AlphaMissense（主
+导信号），将非编码调控区变异路由到 AlphaGenome Atlas（主导信号）。
+单一 CSV 即可同时纳入两种变异并通过同一函数评分：
+
+```bash
+# variants.csv 含字段：gene,position,wt_aa,mut_aa,chrom,ref_dna,alt_dna
+mrnavax scrna \
+    --expression cells.csv \
+    --variants variants.csv \
+    --proteins proteins.fasta \
+    --tumor-markers TP53,KRAS,BRAF \
+    --variant-filter-top-fraction 0.4 \
+    --out report.json
+# report.json 包含每个变异的 variant_scores，以及备注提到
+# 「AlphaGenome Atlas AVI scores used for non-coding regulatory variants」
 ```
 
 ### 其他真实模型集成

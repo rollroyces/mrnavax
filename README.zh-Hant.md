@@ -5,7 +5,7 @@
 > Protocol 契約之後，三份文件語系，205 個測試，26 項後端完整性檢查。
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.16.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.17.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/zh-Hant/)
@@ -240,6 +240,42 @@ print(r["score"])  # 0.0–1.0
 ```bash
 mrnavax trial --patient patient.txt --trials trials.jsonl \
     --matcher trialgpt-simicl --top-k 10
+```
+
+### `AlphaGenome Atlas`（Avsec et al., *Nature* 2026）
+
+預先計算的調控變異影響（AVI）評分，覆蓋人類基因體中全部 **90 億
+個可能的單核苷酸變異**。AlphaMissense（Cheng et al. 2023）評分
+**編碼區** missense 變異；AlphaGenome Atlas 評分**非編碼調控區**
+變異——涵蓋 AlphaMissense 沉默的 98% 基因體。配接器透過 subprocess
+呼叫官方 `alphagenome` Python 套件（受 `[variant-alphagenome]`
+extra 保護；非商業用途依 Google DeepMind 條款）。
+
+```bash
+# 真實：已設定 ALPHAGENOME_API_KEY + 安裝 [variant-alphagenome]
+mrnavax variant-regulatory --csv variants.csv --backend alphagenome
+
+# Mock：相同形狀，僅標準函式庫
+mrnavax variant-regulatory --csv variants.csv --backend mock
+```
+
+**整合進 `score_variant`：** 當您提供 DNA 座標（`chrom`、`ref_dna`、
+`alt_dna`）與 `avi_lookup` 可呼叫物件時，驅動 scrna 管線的同一個
+`score_variant()` 入口會自動將編碼區變異路由到 AlphaMissense（主
+導訊號），將非編碼調控區變異路由到 AlphaGenome Atlas（主導訊號）。
+單一 CSV 即可同時納入兩種變異並透過同一函式評分：
+
+```bash
+# variants.csv 含欄位：gene,position,wt_aa,mut_aa,chrom,ref_dna,alt_dna
+mrnavax scrna \
+    --expression cells.csv \
+    --variants variants.csv \
+    --proteins proteins.fasta \
+    --tumor-markers TP53,KRAS,BRAF \
+    --variant-filter-top-fraction 0.4 \
+    --out report.json
+# report.json 包含每個變異的 variant_scores，以及備註提到
+# 「AlphaGenome Atlas AVI scores used for non-coding regulatory variants」
 ```
 
 ### 其他真實模型整合

@@ -434,6 +434,11 @@ def run_pipeline(
     # Snapshot original count before filtering.
     n_variants_input_orig = len(variants)
 
+    # Capture whether ANY of the original input variants carried DNA coords.
+    # This drives the AVI note in the user-facing report. We must capture
+    # this BEFORE the filter block reassigns `variants` to the kept set.
+    had_dna_coords = any(v.chrom is not None for v in variants)
+
     # Optional variant pre-filter (AlphaMissense-style, with AlphaMissense
     # itself plugged in when the predictions TSV is available).
     filtered_count = n_variants_input_orig
@@ -510,18 +515,56 @@ def run_pipeline(
         filter_scores = {
             f"{s.gene}.{s.position}{s.wt_aa}>{s.mut_aa}": s.normalized_score for s in scored
         }
+    elif any(v.chrom is not None for v in variants):
+        # No filter requested but variants carry DNA coordinates —
+        # still wire the AVI lookup and populate variant_scores so the
+        # user sees AVI for non-coding regulatory variants in the report.
+        from .alphagenome_integration import select_regulatory_scorer as _sel
+        from .variant_scorer import score_variant as _score_one
 
-    note = ""
+        _avi_lookup_fn = _sel().score_variant
+        for v in variants:
+            try:
+                _r = _score_one(
+                    gene=v.gene,
+                    position=v.position,
+                    wt_aa=v.wt_aa,
+                    mut_aa=v.mut_aa,
+                    chrom=v.chrom,
+                    ref_dna=v.ref_dna,
+                    alt_dna=v.alt_dna,
+                    protein_length=len(proteins.get(v.gene, "")) or None,
+                    uniprot_id=uniprot_ids.get(v.gene),
+                    am_lookup=am_lookup_fn,
+                    avi_lookup=_avi_lookup_fn,
+                )
+            except Exception:
+                _r = None
+            if _r is not None:
+                filter_scores[
+                    f"{_r.gene}.{_r.position}{_r.wt_aa}>{_r.mut_aa}"
+                ] = _r.normalized_score
+
+    # Build the user-facing note: AM / AVI status + tumor-marker warning
+    notes: list[str] = []
     if am_active:
-        note = "AlphaMissense pathogenicity scores used in variant filtering."
+        notes.append("AlphaMissense pathogenicity scores used in variant filtering.")
     elif variant_filter_top_fraction < 1.0 or variant_filter_min_score > 0.0:
-        note = (
+        notes.append(
             "AlphaMissense predictions not found — heuristic BLOSUM62 + driver "
             "gene + structural score used. To enable AlphaMissense, download "
             "the predictions TSV from "
             "https://storage.googleapis.com/dm_alphamissense/ "
             "to ~/.cache/mrnavax/AlphaMissense_hg38.tsv "
             "(licensed CC BY-NC-SA 4.0, non-commercial)."
+        )
+    # AVI note: mention if any variant carried DNA coordinates that
+    # were scored via the AlphaGenome Atlas lookup.
+    if had_dna_coords:
+        notes.append(
+            "AlphaGenome Atlas AVI scores used for non-coding regulatory "
+            "variants (Avsec et al. Nature 2026). Coding-region variants "
+            "are still scored by AlphaMissense (when available)."
         )
 
     labels, cluster_names = cluster_with_scanpy(matrix, cell_ids, gene_names, seed=42)
@@ -566,12 +609,13 @@ def run_pipeline(
                 )
             )
     if not marker_idx:
-        note = (
+        notes.append(
             "WARNING: no tumor-marker genes supplied; the largest cluster was "
             "assumed to be tumor. Pass --tumor-markers GENE1,GENE2 for "
             "accurate selection. The downstream peptide list may contain "
             "many false positives."
         )
+    note = " | ".join(notes)
 
     return PipelineReport(
         n_cells=len(cell_ids),

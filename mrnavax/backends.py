@@ -405,6 +405,85 @@ def _check_scrna_variant_filter() -> tuple[bool, str]:
     )
 
 
+@register("scrna.pipeline_with_avi")
+def _check_scrna_pipeline_with_avi() -> tuple[bool, str]:
+    """End-to-end: scrna pipeline auto-wires AlphaGenome Atlas AVI for
+    variants carrying DNA coordinates.
+
+    Validates:
+      1. When the variants CSV has chrom/ref_dna/alt_dna columns, the
+         pipeline auto-wires the AVI lookup (select_regulatory_scorer).
+      2. variant_scores dict is populated even when no filter is applied
+         (so users see per-variant scores for regulatory + coding variants).
+      3. The pipeline note mentions AlphaGenome Atlas AVI integration.
+      4. Without DNA coordinates, the pipeline still works (backward
+         compat — falls back to AM/BLOSUM62 only).
+    """
+    # Build a minimal variants CSV with DNA coordinates for some variants.
+    # We synthesize the file using tempfile because the bundled example
+    # CSV (variants_coding.csv) doesn't have DNA columns.
+    import csv as _csv
+    import tempfile as _tempfile
+    from pathlib import Path as _Path
+
+    from .sc_rna_pipeline import run_pipeline
+
+    with _tempfile.TemporaryDirectory() as tmp:
+        dna_path = _Path(tmp) / "variants_dna.csv"
+        with open(dna_path, "w", newline="") as f:
+            w = _csv.writer(f)
+            w.writerow(["gene", "position", "wt_aa", "mut_aa", "chrom", "ref_dna", "alt_dna"])
+            # Mix: one coding-region variant (chr17 TP53 R175H), one regulatory (odd pos)
+            w.writerow(["TP53", "175", "R", "H", "chr17", "G", "A"])
+            w.writerow(["REG1", "101", "A", "G", "chr11", "A", "G"])
+
+        # 1 + 2 + 3: full pipeline with DNA coords; variant_scores should be populated
+        # and note should mention AVI.
+        report = run_pipeline(
+            _example_path("cells.csv"),
+            dna_path,
+            _example_path("proteins.fasta"),
+            hla=("HLA-A*02:01",),
+            tumor_marker_genes=["TP53"],
+            variant_filter_top_fraction=1.0,  # no filter, so we test
+            # the no-filter-but-with-DNA path that fills variant_scores
+        )
+        bad: list[str] = []
+        if not report.variant_scores:
+            bad.append("variant_scores empty when DNA coords present")
+        if "AlphaGenome" not in report.note and "AVI" not in report.note:
+            bad.append(f"note missing AVI mention: {report.note!r}")
+
+        # 4: without DNA coords, pipeline still works
+        # Build a CSV without chrom/ref_dna/alt_dna.
+        legacy_path = _Path(tmp) / "legacy.csv"
+        with open(legacy_path, "w", newline="") as f:
+            w = _csv.writer(f)
+            w.writerow(["gene", "position", "wt_aa", "mut_aa"])
+            w.writerow(["TP53", "175", "R", "H"])
+        legacy_report = run_pipeline(
+            _example_path("cells.csv"),
+            legacy_path,
+            _example_path("proteins.fasta"),
+            hla=("HLA-A*02:01",),
+            tumor_marker_genes=["TP53"],
+        )
+        if "AlphaGenome" in legacy_report.note or "AVI" in legacy_report.note:
+            bad.append(
+                f"note wrongly includes AVI for legacy CSV without DNA coords: "
+                f"{legacy_report.note!r}"
+            )
+
+    if bad:
+        return False, "scrna+AVI integration issues: " + "; ".join(bad)
+    return True, (
+        f"scrna+AVI OK: DNA-coord variants → variant_scores populated "
+        f"({len(report.variant_scores)} entries), note mentions "
+        f"AlphaGenome Atlas AVI; legacy CSV (no DNA coords) → note "
+        f"correctly omits AVI mention"
+    )
+
+
 @register("scrna.variant_scorer_alphamissense")
 def _check_variant_scorer() -> tuple[bool, str]:
     from .variant_scorer import score_variant
