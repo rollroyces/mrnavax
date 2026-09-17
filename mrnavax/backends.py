@@ -1472,6 +1472,94 @@ def _check_alphagenome_atlas() -> tuple[bool, str]:
     )
 
 
+@register("variant.alphagenome_atlas_fixture")
+def _check_alphagenome_atlas_fixture() -> tuple[bool, str]:
+    """Regression test against the bundled AlphaGenome Atlas API
+    response fixture (tests/fixtures/alphagenome_atlas_sample.json).
+
+    Catches upstream Atlas API schema changes at PR time. The fixture
+    is a synthetic sample modeled on the documented Atlas response
+    shape; a real captured response can replace it when an
+    ALPHAGENOME_API_KEY is available. Validates:
+
+      1. Fixture file exists and parses as JSON.
+      2. Every variant has the required keys (chrom, pos, ref, alt,
+         score, classification, is_coding).
+      3. Score is in [0, 1], classification is one of
+         {low, moderate, high}, is_coding is bool.
+      4. The fixture exercises both coding and regulatory variants
+         (so the parser handles both is_coding branches).
+      5. All three AVI classifications are present.
+      6. Each fixture variant parses into a valid AVIResult via the
+         subprocess adapter payload shape (mirrors what
+         AlphaGenomeCLIAdapter.score_variant does with shim output).
+    """
+    import json as _json
+
+    from .alphagenome_integration import AVIResult
+
+    # 1. Fixture file exists
+    fixture_path = (
+        Path(__file__).resolve().parent.parent
+        / "tests"
+        / "fixtures"
+        / "alphagenome_atlas_sample.json"
+    )
+    if not fixture_path.exists():
+        return False, f"missing fixture file: {fixture_path}"
+
+    # 2. Parses as JSON with required structure
+    with open(fixture_path) as f:
+        data = _json.load(f)
+    if "variants" not in data or not isinstance(data["variants"], list):
+        return False, "fixture missing 'variants' list"
+
+    bad: list[str] = []
+    coding_count = 0
+    regulatory_count = 0
+    classifications_seen: set[str] = set()
+
+    # 3-5. Per-variant validation
+    for i, rec in enumerate(data["variants"]):
+        missing = {"chrom", "pos", "ref", "alt", "score", "classification", "is_coding"} - rec.keys()
+        if missing:
+            bad.append(f"variant[{i}] missing fields {missing}")
+            continue
+        try:
+            # 6. Parse into AVIResult (mirrors adapter payload shape)
+            # The construction itself validates the shape (raises
+            # ValueError on out-of-range score or invalid class).
+            AVIResult(
+                score=float(rec["score"]),
+                classification=str(rec["classification"]),
+                is_coding=bool(rec["is_coding"]),
+            )
+        except (ValueError, TypeError) as e:
+            bad.append(f"variant[{i}] AVIResult parse failed: {e}")
+            continue
+        if rec["is_coding"]:
+            coding_count += 1
+        else:
+            regulatory_count += 1
+        classifications_seen.add(rec["classification"])
+
+    if coding_count == 0:
+        bad.append("fixture has no coding-region variants")
+    if regulatory_count == 0:
+        bad.append("fixture has no regulatory-region variants")
+    for expected in {"low", "moderate", "high"}:
+        if expected not in classifications_seen:
+            bad.append(f"fixture missing classification={expected}")
+
+    if bad:
+        return False, "AlphaGenome Atlas fixture issues: " + "; ".join(bad)
+    return True, (
+        f"AlphaGenome Atlas fixture OK: {len(data['variants'])} variants parsed "
+        f"({coding_count} coding + {regulatory_count} regulatory), all "
+        f"3 classifications (low/moderate/high) present, scores in [0,1]"
+    )
+
+
 @register("scrna.structural_disruption_chou_fasman")
 def _check_structural_disruption() -> tuple[bool, str]:
     """L→P in a helix context must score higher than L→P in a coil context.

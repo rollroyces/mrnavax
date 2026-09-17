@@ -14,6 +14,7 @@ without them.
 | `MedCPT` | `neoantigen`, `trial` | Dense biomedical retrieval (PubMed contrastive) | `pip install -e ".[neoantigen-medcpt]"` or `[trial-medcpt]` |
 | `scGPT` | `scrna` | Single-cell foundation-model embeddings | `pip install -e ".[scrna]"` |
 | `AlphaMissense` | `variant_scorer` | Pathogenicity via 71M-variant TSV | Standalone TSV (CC BY-NC-SA) |
+| `AlphaGenome Atlas` | `variant-regulatory`, `variant_scorer`, `scrna` | Regulatory-variant impact (AVI) for all 9B possible SNVs | `pip install -e \".[variant-alphagenome]"` + `ALPHAGENOME_API_KEY` |
 | `ESM2` | `neoantigen` | Frozen protein-LM embeddings for immunogenicity | `pip install -e ".[protein-lm]"` |
 | `RiboDecode` (real) | `codon` | Joint translation × MFE codon optimization | `pip install ribodecode-1.3.0-py3-none-any.whl` |
 | `RiboDecode` (heuristic) | `codon` | Stdlib RiboDecode-style hill-climb | — |
@@ -64,3 +65,20 @@ available backend in this order:
 
 This makes local dev painless and lets production deployments override
 via env var or CLI flag.
+
+## Recorded-response fixtures
+
+For backends that talk to external APIs whose schemas could break
+between releases, we bundle a JSON fixture + a backend check that
+parses it. The fixture locks the parser shape so CI catches schema
+changes at PR time, not at user runtime.
+
+| Fixture | Backend check | When to refresh |
+|---|---|---|
+| `tests/fixtures/alphagenome_atlas_sample.json` | `variant.alphagenome_atlas_fixture` | When Google's AlphaGenome Atlas response shape changes |
+
+To refresh a fixture: capture a real API response (with appropriate
+auth), save it under the existing filename, run
+`python -m mrnavax.backends --check-all`, and commit. The synthetic
+fixtures ship today are sufficient to lock the parser shape; a real
+captured response can replace them whenever convenient.

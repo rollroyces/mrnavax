@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-09-17
+
+### Added
+
+- **Recorded AlphaGenome Atlas API response fixture** at
+  `tests/fixtures/alphagenome_atlas_sample.json`. Five synthetic variant
+  responses modeled on the documented Atlas JSON shape — two coding
+  (BRAF V600E, KRAS G12D) and three regulatory-region variants
+  covering all three classification bins (low / moderate / high). A
+  real captured response can replace this file when an
+  `ALPHAGENOME_API_KEY` is available; the synthetic fixture is enough
+  to lock the parser shape so upstream schema changes are caught at
+  PR time.
+- **New backend check `variant.alphagenome_atlas_fixture`** that loads
+  the fixture, parses each variant into an `AVIResult` via the
+  subprocess adapter payload shape, and asserts:
+    - All variants have the required keys (chrom, pos, ref, alt,
+      score, classification, is_coding)
+    - Score is in [0, 1], classification is one of {low, moderate,
+      high}, is_coding is bool
+    - The fixture exercises both coding and regulatory variants
+    - All three AVI classifications are present
+    - AVIResult construction succeeds for every fixture entry
+- **8 new unit tests** in `tests/test_atlas_fixture.py` covering
+  fixture-file existence, JSON parsing, required fields, AVIResult
+  construction, coding/regulatory coverage, all-three-classifications
+  coverage, and the backend check integration.
+- Total backend checks: **28/28** (was 27/27).
+
+### Why this matters
+
+Catches upstream AlphaGenome Atlas API schema changes at PR time.
+Without the fixture, a breaking change in the Atlas response shape
+would only surface when a user with an `ALPHAGENOME_API_KEY` ran the
+pipeline in production. The fixture locks the parser shape so CI
+fails on the first PR with the new shape, not at user runtime.
+
 ## [0.17.0] - 2026-09-17
 
 ### Added

@@ -1,0 +1,62 @@
+{
+  "_doc": "Synthetic AlphaGenome Atlas API response fixture used for regression testing. Modeled on the Atlas JSON shape (Avsec et al. Nature 2026). A real captured response can replace this file when an ALPHAGENOME_API_KEY is available; the synthetic fixture is enough to lock the parser shape so upstream schema changes are caught at PR time.",
+  "_captured_at": "2026-09-17",
+  "_source": "synthetic (modeled on https://github.com/google-deepmind/alphagenome response shape)",
+  "variants": [
+    {
+      "chrom": "chr7",
+      "pos": 140753336,
+      "ref": "T",
+      "alt": "A",
+      "label": "BRAF V600E (coding, likely_pathogenic)",
+      "score": 0.83,
+      "classification": "high",
+      "is_coding": true,
+      "_expectation": "coding-region missense; AlphaMissense is the canonical signal here; AVI is recorded as secondary observation in score_variant components"
+    },
+    {
+      "chrom": "chr17",
+      "pos": 7675088,
+      "ref": "C",
+      "alt": "T",
+      "label": "TP53 promoter regulatory variant (non-coding, high impact)",
+      "score": 0.72,
+      "classification": "high",
+      "is_coding": false,
+      "_expectation": "non-coding regulatory variant; AVI is the dominant signal at weight 0.45 in score_variant"
+    },
+    {
+      "chrom": "chr11",
+      "pos": 12345678,
+      "ref": "A",
+      "alt": "G",
+      "label": "intergenic regulatory variant (non-coding, moderate impact)",
+      "score": 0.41,
+      "classification": "moderate",
+      "is_coding": false,
+      "_expectation": "non-coding regulatory variant with moderate AVI score"
+    },
+    {
+      "chrom": "chr12",
+      "pos": 25245350,
+      "ref": "C",
+      "alt": "A",
+      "label": "KRAS G12D (coding, likely_pathogenic)",
+      "score": 0.832,
+      "classification": "high",
+      "is_coding": true,
+      "_expectation": "coding-region missense; AlphaMissense-canonical"
+    },
+    {
+      "chrom": "chr5",
+      "pos": 112839511,
+      "ref": "T",
+      "alt": "C",
+      "label": "synonymous intronic variant (non-coding, low impact)",
+      "score": 0.12,
+      "classification": "low",
+      "is_coding": false,
+      "_expectation": "low-impact regulatory variant; would be filtered out by score_variant if min_score > 0.5"
+    }
+  ]
+}
