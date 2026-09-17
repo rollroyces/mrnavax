@@ -405,6 +405,123 @@ def _check_scrna_variant_filter() -> tuple[bool, str]:
     )
 
 
+@register("conservation.phylop46way")
+def _check_conservation_phylop() -> tuple[bool, str]:
+    """PhyloP46way / GERP++ conservation lookup: the 4th coding-region
+    scoring signal.
+
+    Validates:
+      1. MockPhyloPLookup satisfies the ConservationLookup Protocol.
+      2. Mock returns scores in [-1, 1] (PhyloP range).
+      3. Mock is deterministic across calls.
+      4. score_variant accepts conservation_lookup=... and records the
+         score in components['phylop46way_score'].
+      5. Conservation composes with AlphaMissense (coding) and
+         AlphaGenome Atlas AVI (regulatory) without breaking the
+         existing routing logic.
+      6. Conservation is silent on lookup errors / None returns /
+         out-of-range values.
+    """
+    from .conservation import (
+        ConservationLookup,
+        MockPhyloPLookup,
+    )
+    from .variant_scorer import score_variant
+
+    # 1. Protocol runtime_checkable
+    mock = MockPhyloPLookup()
+    if not isinstance(mock, ConservationLookup):
+        return False, "MockPhyloPLookup does not satisfy ConservationLookup Protocol"
+
+    # 2. Range check
+    bad: list[str] = []
+    a = mock.lookup("chr7", 140753336)
+    b = mock.lookup("chr11", 12345678)
+    if not -1.0 <= a <= 1.0:
+        bad.append(f"mock score {a} out of [-1, 1]")
+    if not -1.0 <= b <= 1.0:
+        bad.append(f"mock score {b} out of [-1, 1]")
+
+    # 3. Determinism
+    a2 = mock.lookup("chr7", 140753336)
+    if a != a2:
+        bad.append("mock not deterministic")
+
+    # 4. score_variant wires through
+    r = score_variant(
+        "BRAF",
+        600,
+        "V",
+        "E",
+        protein_length=766,
+        chrom="chr7",
+        pos=140753336,
+        conservation_lookup=mock.lookup,
+    )
+    if "phylop46way_score" not in r.components:
+        bad.append("phylop46way_score missing in components")
+    if not -1.0 <= r.components.get("phylop46way_score", 0.0) <= 1.0:
+        bad.append("phylop46way_score in components out of range")
+
+    # 5. Composes with AM + AVI
+    from mrnavax.alphagenome_integration import MockRegulatoryVariantScorer
+    from mrnavax.alphamissense_integration import AlphaMissenseResult
+
+    def am_coding(uniprot, wt, pos, mut):
+        return AlphaMissenseResult(
+            score=0.9, classification="likely_pathogenic",
+            uniprot=uniprot, aa_change=f"{wt}{pos}{mut}",
+        )
+
+    r_full = score_variant(
+        "BRAF",
+        600,
+        "V",
+        "E",
+        protein_length=766,
+        uniprot_id="P15056",
+        chrom="chr7",
+        pos=140753336,
+        ref_dna="T",
+        alt_dna="A",
+        am_lookup=am_coding,
+        avi_lookup=MockRegulatoryVariantScorer().score_variant,
+        conservation_lookup=mock.lookup,
+    )
+    if "alphamissense_score" not in r_full.components:
+        bad.append("composed: AM missing")
+    if "alphagenome_atlas_score" not in r_full.components:
+        bad.append("composed: AVI missing")
+    if "phylop46way_score" not in r_full.components:
+        bad.append("composed: PhyloP missing")
+
+    # 6. Silent on error
+    def raises(*args):
+        raise RuntimeError("UCSC down")
+
+    r_err = score_variant(
+        "BRAF",
+        600,
+        "V",
+        "E",
+        protein_length=766,
+        chrom="chr7",
+        pos=140753336,
+        conservation_lookup=raises,
+    )
+    if "phylop46way_score" in r_err.components:
+        bad.append("silent fail: PhyloP should be dropped on lookup error")
+
+    if bad:
+        return False, "conservation.PhyloP integration issues: " + "; ".join(bad)
+    return True, (
+        "PhyloP46way OK: mock deterministic, scores in [-1, 1]; "
+        "score_variant wires through to components.phylop46way_score "
+        "(composes with AM + AVI without breaking routing); "
+        "silent on lookup error"
+    )
+
+
 @register("scrna.pipeline_with_avi")
 def _check_scrna_pipeline_with_avi() -> tuple[bool, str]:
     """End-to-end: scrna pipeline auto-wires AlphaGenome Atlas AVI for

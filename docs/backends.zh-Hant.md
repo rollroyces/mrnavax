@@ -14,6 +14,7 @@
 | `scGPT` | `scrna` | 單細胞基礎模型嵌入 | `pip install -e ".[scrna]"` |
 | `AlphaMissense` | `variant_scorer` | 透過 71M 變異 TSV 預測致變性 | 獨立 TSV（CC BY-NC-SA） |
 | `AlphaGenome Atlas` | `variant-regulatory`、`variant_scorer`、`scrna` | 全部 9 億個可能 SNV 的調控變異影響（AVI） | `pip install -e \".[variant-alphagenome]\"` + `ALPHAGENOME_API_KEY` |
+| `PhyloP46way` | `variant_scorer`、`scrna` | 每個 hg38 鹼基的演化保守度（UCSC 46-way 胎盤哺乳類比對） | （使用標準函式庫 urllib；無額外依賴） |
 | `ESM2` | `neoantigen` | 用於免疫原性的凍結蛋白質 LM 嵌入 | `pip install -e ".[protein-lm]"` |
 | `RiboDecode`（真實） | `codon` | 翻譯 × MFE 聯合密碼子最佳化 | `pip install ribodecode-1.3.0-py3-none-any.whl` |
 | `RiboDecode`（啟發式） | `codon` | 純標準函式庫 RiboDecode 風格山丘爬山 | — |

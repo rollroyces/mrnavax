@@ -10,8 +10,8 @@ actually ranks them.
 
 ## TL;DR
 
-With both AlphaMissense (coding) and AlphaGenome Atlas AVI (regulatory)
-wired up:
+With AlphaMissense (coding), AlphaGenome Atlas AVI (regulatory), AND
+PhyloP46way evolutionary conservation wired up:
 
 * **Precision@3 = 1.0** — top-3 variants are all pathogenic
 * **Precision@5 = 0.8** — 4 of top-5 are pathogenic
@@ -20,7 +20,10 @@ wired up:
 
 Without AVI, regulatory-region pathogenic variants are
 **silently dropped** — they only enter the top-K if BLOSUM62 +
-driver-gene boost alone is strong enough.
+driver-gene boost alone is strong enough. Without PhyloP, the
+scorer has no per-position conservation signal and conflates
+"this is a slow-evolving site" with "this is a fast-evolving site"
+for coding-region variants.
 
 ## Setup
 

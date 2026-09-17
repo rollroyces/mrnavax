@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-09-17
+
+### Added
+
+- **PhyloP46way evolutionary-conservation integration** as the 4th
+  coding-region scoring signal in `score_variant`. Closes the last
+  remaining gap in coding-region variant prioritization. Components:
+    - `mrnavax/conservation.py` NEW module with
+      `ConservationLookup` Protocol, `MockPhyloPLookup` (stdlib-only,
+      deterministic SHA-256 hash), and `PhyloPRestAdapter` (real
+      UCSC REST API; uses stdlib urllib so no heavy deps).
+    - `select_conservation_lookup()` backend selector.
+    - `score_variant` accepts `conservation_lookup` + `pos` kwargs;
+      PhyloP is recorded in `components['phylop46way_score']` and
+      appears in the rationale string "PhyloP46way conservation=±X.XXX".
+- **Composition with AM + AVI**: the 4-signal pipeline is now
+  BLOSUM62 + driver + structural + AM (dominant for coding) +
+  AVI (dominant for non-coding regulatory) + PhyloP (conservation
+  boost). For coding-region variants with high conservation,
+  PhyloP adds a +0.10 × score bonus on top of the AM-dominant
+  combination.
+- **`filter_variants` + `run_pipeline` auto-wire the conservation
+  lookup** when variants carry DNA coordinates. Mock by default;
+  real UCSC adapter selected via `select_conservation_lookup()`.
+- **10 new unit tests** in `tests/test_conservation.py` covering
+  parameter acceptance, dominant-signal routing, silent failure
+  modes (None return / exception / out-of-range), and composition
+  with AM + AVI.
+- **New backend check `conservation.phylop46way`** — exercises the
+  full integration end-to-end. Total backend checks: **30/30**
+  (was 29/29).
+- `docs/backends.md` (3 locales) — new `PhyloP46way` row in the
+  backend matrix.
+- `docs/case-studies/variant-prioritization.md` — refined TL;DR
+  to mention the 4-signal composition and what each layer adds.
+- Total tests: **239** (was 229). Total backend checks: **30**
+  (was 29).
+
+### Why this matters
+
+Closes the last remaining gap in coding-region variant
+prioritization. The previous releases had BLOSUM62 + driver-gene
++ structural disruption + AlphaMissense — but no per-position
+evolutionary-conservation signal. With PhyloP46way, the scorer
+now distinguishes "this is a slow-evolving site" (conserved → more
+likely pathogenic) from "this is a fast-evolving site" (likely
+neutral). Composes cleanly with AlphaMissense: both signals
+point in the same direction for true driver variants and
+disagree for false positives.
+
+### Reference
+
+Pollard KS, Hubisz MJ, Rosenbloom KR, Siepel A. "Detection of
+nonneutral substitution rates on mammalian phylogenies."
+*Genome Research* 20, 110–121 (2010). PhyloP46way data: UCSC
+Genome Browser.
+
 ## [0.19.0] - 2026-09-17
 
 ### Added

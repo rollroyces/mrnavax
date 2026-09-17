@@ -498,6 +498,17 @@ def run_pipeline(
             except Exception:
                 avi_lookup_fn = None
 
+        # Build the conservation (PhyloP46way) lookup. Mock by default;
+        # users with the [variant-conservation] extra installed get the
+        # UCSC REST adapter. Selected at the backend-selector level.
+        conservation_lookup_fn = None
+        if any(v.chrom is not None for v in variants):
+            try:
+                from .conservation import select_conservation_lookup
+                conservation_lookup_fn = select_conservation_lookup().lookup
+            except Exception:
+                conservation_lookup_fn = None
+
         scored = filter_variants(
             v_dicts,
             top_fraction=variant_filter_top_fraction,
@@ -507,6 +518,7 @@ def run_pipeline(
             uniprot_ids=uniprot_ids,
             am_lookup=am_lookup_fn,
             avi_lookup=avi_lookup_fn,
+            conservation_lookup=conservation_lookup_fn,
             strict=False,
         )
         keep_keys = {(s.gene, s.position, s.wt_aa, s.mut_aa) for s in scored}
@@ -520,9 +532,11 @@ def run_pipeline(
         # still wire the AVI lookup and populate variant_scores so the
         # user sees AVI for non-coding regulatory variants in the report.
         from .alphagenome_integration import select_regulatory_scorer as _sel
+        from .conservation import select_conservation_lookup as _sel_cons
         from .variant_scorer import score_variant as _score_one
 
         _avi_lookup_fn = _sel().score_variant
+        _cons_lookup_fn = _sel_cons().lookup
         for v in variants:
             try:
                 _r = _score_one(
@@ -537,6 +551,7 @@ def run_pipeline(
                     uniprot_id=uniprot_ids.get(v.gene),
                     am_lookup=am_lookup_fn,
                     avi_lookup=_avi_lookup_fn,
+                    conservation_lookup=_cons_lookup_fn,
                 )
             except Exception:
                 _r = None

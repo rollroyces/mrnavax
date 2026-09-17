@@ -561,11 +561,13 @@ def score_variant(
     chrom: str | None = None,
     ref_dna: str | None = None,
     alt_dna: str | None = None,
+    pos: int | None = None,
     protein_length: int | None = None,
     protein_sequence: str | None = None,
     uniprot_id: str | None = None,
     am_lookup: Callable | None = None,
     avi_lookup: Callable | None = None,
+    conservation_lookup: Callable | None = None,
     driver_genes: set[str] | None = None,
     strict: bool = False,
 ) -> VariantScore | None:
@@ -596,10 +598,20 @@ def score_variant(
     lookup is silent: a network error or None return drops the
     component rather than raising.
 
+    If ``chrom`` + ``pos`` + ``conservation_lookup`` are all supplied
+    AND the lookup returns a float in [-1, 1], the PhyloP46way
+    evolutionary-conservation score is recorded in components as the
+    4th coding-region signal (UCSC 46-way placental alignment;
+    Pollard et al. 2010). Composition with AlphaMissense: AM is
+    still the dominant 0.45 signal; PhyloP adds a smaller
+    conservation boost. The lookup is silent: None / error /
+    out-of-range drops the component rather than raising.
+
     Call ``avi_lookup`` as ``avi_lookup(chrom, position, ref_dna,
-    alt_dna)``. If any of the DNA-level arguments are missing, the
-    AVI lookup is skipped silently (the variant is treated as
-    coding-only).
+    alt_dna)``. Call ``conservation_lookup`` as
+    ``conservation_lookup(chrom, pos)`` (pos defaults to ``position``
+    if not supplied separately). If any of the DNA-level arguments
+    are missing, the corresponding lookup is skipped silently.
     """
     wt_aa = wt_aa.upper()
     mut_aa = mut_aa.upper()
@@ -694,6 +706,32 @@ def score_variant(
             if not avi_result.is_coding:
                 avi_weight = 0.45
 
+    # ---- 6c. PhyloP46way evolutionary conservation (UCSC 46-way) ----
+    # The 4th coding-region signal. PhyloP > 0 → conserved (likely
+    # functional), < 0 → fast-evolving (likely neutral). Recorded in
+    # components for transparency; does NOT compete with AlphaMissense
+    # for the dominant-signal slot. The lookup is silent: None / error
+    # / out-of-range drops the component rather than raising.
+    #
+    # `pos` parameter: when the caller supplies `pos` explicitly, use
+    # it (allows DNA-level variant positions to differ from the
+    # protein position `position`). When absent, fall back to the
+    # protein `position` argument (most callers use the same number).
+    conservation_score_val: float | None = None
+    if chrom is not None and conservation_lookup is not None:
+        lookup_pos = pos if pos is not None else position
+        try:
+            raw = conservation_lookup(chrom, lookup_pos)
+        except Exception:
+            raw = None
+        if raw is not None:
+            try:
+                val = float(raw)
+            except (TypeError, ValueError):
+                val = None
+            if val is not None and -1.0 <= val <= 1.0:
+                conservation_score_val = val
+
     # ---- 7. weighted combination ----
     # Priority of dominant signal:
     #   1. AVI (is_coding=False)        → avi_weight = 0.45
@@ -709,11 +747,22 @@ def score_variant(
             + 0.20 * struct_penalty
             + 0.10 * (1.0 if position_penalty == 0 else 0.0)
             + position_penalty
+            # PhyloP adds a small bonus when both are positive
+            # (variant at a conserved site, regardless of coding status).
+            + (0.10 if conservation_score_val is not None and conservation_score_val > 0.3 else 0.0)
         )
     elif am_weight > 0:
         # AlphaMissense is the dominant signal; the other components
         # act as tiebreakers when AM is missing or in the ambiguous band.
+        # PhyloP conservation adds a smaller boost when both AM and
+        # conservation are positive (the variant is conserved AND
+        # likely-pathogenic by AM — strong combined signal).
         other_total = 1.0 - am_weight  # 0.55 across the rest
+        phylo_boost = (
+            0.10 * (conservation_score_val or 0.0)
+            if conservation_score_val is not None and conservation_score_val > 0
+            else 0.0
+        )
         raw = am_weight * (am_score or 0.0) + other_total * (
             0.35 * blosum_norm
             + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
@@ -721,9 +770,14 @@ def score_variant(
             + 0.20 * struct_penalty
             + 0.10 * (1.0 if position_penalty == 0 else 0.0)
             + position_penalty
-        )
+        ) + phylo_boost
     else:
-        # Neither AVI nor AM — original weighted combination
+        # Neither AVI nor AM — original weighted combination + PhyloP bonus
+        phylo_boost = (
+            0.10 * (conservation_score_val or 0.0)
+            if conservation_score_val is not None and conservation_score_val > 0
+            else 0.0
+        )
         raw = (
             0.35 * blosum_norm
             + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
@@ -731,7 +785,7 @@ def score_variant(
             + 0.20 * struct_penalty
             + 0.10 * (1.0 if position_penalty == 0 else 0.0)
             + position_penalty
-        )
+        ) + phylo_boost
     normalized = max(0.0, min(1.0, raw))
 
     components = {
@@ -750,6 +804,8 @@ def score_variant(
         components["alphagenome_atlas_classification"] = avi_classification
         if avi_is_coding is not None:
             components["alphagenome_atlas_is_coding"] = avi_is_coding
+    if conservation_score_val is not None:
+        components["phylop46way_score"] = conservation_score_val
 
     rationale_parts = [
         f"BLOSUM62 {wt_aa}→{mut_aa} = {blosum}",
@@ -767,6 +823,10 @@ def score_variant(
         tag = " (dominant)" if avi_weight > 0 else ""
         rationale_parts.append(
             f"AlphaGenome AVI={avi_score:.3f} ({avi_classification}){tag}"
+        )
+    if conservation_score_val is not None:
+        rationale_parts.append(
+            f"PhyloP46way conservation={conservation_score_val:+.3f}"
         )
 
     return VariantScore(
@@ -845,6 +905,7 @@ def filter_variants(
     uniprot_ids: dict[str, str] | None = None,
     am_lookup: Callable | None = None,
     avi_lookup: Callable | None = None,
+    conservation_lookup: Callable | None = None,
     strict: bool = False,
 ) -> list[VariantScore]:
     """Score and filter a list of variants to the top ``top_fraction``.
@@ -862,6 +923,9 @@ def filter_variants(
     variants (Avsec et al. *Nature* 2026). For coding-region variants
     where AVI returns ``is_coding=True``, AVI is recorded as a secondary
     signal and AlphaMissense still dominates.
+    If ``conservation_lookup`` is provided AND the variant dict has
+    ``chrom`` (and optionally ``pos``), the PhyloP46way conservation
+    score is included as a 4th signal (Pollard et al. 2010).
     """
     scored: list[VariantScore] = []
     for v in variants:
@@ -886,11 +950,15 @@ def filter_variants(
             chrom=v.get("chrom"),
             ref_dna=v.get("ref_dna"),
             alt_dna=v.get("alt_dna"),
+            # Pass conservation lookup through; falls back to protein
+            # position if pos isn't supplied separately in the dict.
+            pos=v.get("pos"),
             protein_length=prot_len,
             protein_sequence=prot_seq,
             uniprot_id=uniprot_id,
             am_lookup=am_lookup,
             avi_lookup=avi_lookup,
+            conservation_lookup=conservation_lookup,
             strict=strict,
         )
         if result is not None:
