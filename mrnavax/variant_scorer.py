@@ -558,10 +558,14 @@ def score_variant(
     wt_aa: str,
     mut_aa: str,
     *,
+    chrom: str | None = None,
+    ref_dna: str | None = None,
+    alt_dna: str | None = None,
     protein_length: int | None = None,
     protein_sequence: str | None = None,
     uniprot_id: str | None = None,
     am_lookup: Callable | None = None,
+    avi_lookup: Callable | None = None,
     driver_genes: set[str] | None = None,
     strict: bool = False,
 ) -> VariantScore | None:
@@ -581,6 +585,21 @@ def score_variant(
     on observed-vs-expected variant frequency in 2M+ human proteins and
     has AUC 0.94 on saturation mutagenesis benchmarks — supplying it
     pushes the variant scorer from ~3/10 to ~7/10 against the frontier.
+
+    If ``chrom`` + ``ref_dna`` + ``alt_dna`` + ``avi_lookup`` are all
+    supplied AND the lookup returns an ``AVIResult`` with
+    ``is_coding=False``, the AlphaGenome Atlas AVI score (Avsec et al.,
+    *Nature* 2026) becomes the dominant signal at weight 0.45 — same
+    role AlphaMissense plays for coding-region variants. This lets a
+    single ``score_variant`` call handle both coding (AM) and
+    non-coding-regulatory (AVI) variants in a uniform pipeline. The
+    lookup is silent: a network error or None return drops the
+    component rather than raising.
+
+    Call ``avi_lookup`` as ``avi_lookup(chrom, position, ref_dna,
+    alt_dna)``. If any of the DNA-level arguments are missing, the
+    AVI lookup is skipped silently (the variant is treated as
+    coding-only).
     """
     wt_aa = wt_aa.upper()
     mut_aa = mut_aa.upper()
@@ -642,8 +661,56 @@ def score_variant(
             # the score — it's the highest-fidelity signal here.
             am_weight = 0.45
 
+    # ---- 6b. AlphaGenome Atlas AVI (regulatory-variant impact) ----
+    # Routes based on the AVIResult.is_coding flag returned by the lookup:
+    #   is_coding=False  → AVI is the dominant signal (0.45 weight,
+    #                      non-coding regulatory variant; AlphaMissense is silent)
+    #   is_coding=True   → AVI is a secondary signal (recorded in
+    #                      components but does NOT dominate; AlphaMissense wins)
+    # The lookup is silent: a network error, None return, or missing
+    # chrom/ref_dna/alt_dna drops the component rather than raising.
+    avi_score: float | None = None
+    avi_classification: str | None = None
+    avi_is_coding: bool | None = None
+    avi_weight = 0.0
+    if (
+        avi_lookup is not None
+        and chrom is not None
+        and ref_dna is not None
+        and alt_dna is not None
+    ):
+        try:
+            avi_result = avi_lookup(chrom, position, ref_dna, alt_dna)
+        except Exception:
+            avi_result = None
+        if avi_result is not None:
+            avi_score = avi_result.score
+            avi_classification = avi_result.classification
+            avi_is_coding = avi_result.is_coding
+            # Dominant signal only when the Atlas reports the variant as
+            # non-coding regulatory. For coding-region variants where
+            # AlphaMissense is the canonical signal, AVI is a secondary
+            # observation recorded in components but not weighted.
+            if not avi_result.is_coding:
+                avi_weight = 0.45
+
     # ---- 7. weighted combination ----
-    if am_weight > 0:
+    # Priority of dominant signal:
+    #   1. AVI (is_coding=False)        → avi_weight = 0.45
+    #   2. AlphaMissense (provided)     → am_weight = 0.45
+    #   3. neither                      → all components weighted as before
+    if avi_weight > 0:
+        # AVI is the dominant signal (regulatory-region variant).
+        other_total = 1.0 - avi_weight  # 0.55 across the rest
+        raw = avi_weight * (avi_score or 0.0) + other_total * (
+            0.35 * blosum_norm
+            + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
+            + 0.15 * hydro_norm
+            + 0.20 * struct_penalty
+            + 0.10 * (1.0 if position_penalty == 0 else 0.0)
+            + position_penalty
+        )
+    elif am_weight > 0:
         # AlphaMissense is the dominant signal; the other components
         # act as tiebreakers when AM is missing or in the ambiguous band.
         other_total = 1.0 - am_weight  # 0.55 across the rest
@@ -656,7 +723,7 @@ def score_variant(
             + position_penalty
         )
     else:
-        # No AlphaMissense — original weighted combination
+        # Neither AVI nor AM — original weighted combination
         raw = (
             0.35 * blosum_norm
             + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
@@ -678,6 +745,11 @@ def score_variant(
     if am_score is not None:
         components["alphamissense_score"] = am_score
         components["alphamissense_classification"] = am_classification
+    if avi_score is not None:
+        components["alphagenome_atlas_score"] = avi_score
+        components["alphagenome_atlas_classification"] = avi_classification
+        if avi_is_coding is not None:
+            components["alphagenome_atlas_is_coding"] = avi_is_coding
 
     rationale_parts = [
         f"BLOSUM62 {wt_aa}→{mut_aa} = {blosum}",
@@ -689,6 +761,13 @@ def score_variant(
         rationale_parts.append(f"position {position} near terminus (penalty)")
     if am_score is not None:
         rationale_parts.append(f"AlphaMissense pathogenicity={am_score:.3f} ({am_classification})")
+    if avi_score is not None:
+        # Show AVI score with 3 decimals; tag whether it's the dominant
+        # signal (regulatory) or a secondary observation (coding).
+        tag = " (dominant)" if avi_weight > 0 else ""
+        rationale_parts.append(
+            f"AlphaGenome AVI={avi_score:.3f} ({avi_classification}){tag}"
+        )
 
     return VariantScore(
         gene=gene,
@@ -765,6 +844,7 @@ def filter_variants(
     protein_sequences: dict[str, str] | None = None,
     uniprot_ids: dict[str, str] | None = None,
     am_lookup: Callable | None = None,
+    avi_lookup: Callable | None = None,
     strict: bool = False,
 ) -> list[VariantScore]:
     """Score and filter a list of variants to the top ``top_fraction``.
@@ -776,6 +856,12 @@ def filter_variants(
     Chou-Fasman structural-disruption component.
     If ``uniprot_ids`` and ``am_lookup`` are both provided, AlphaMissense
     pathogenicity scores are included as the dominant signal.
+    If ``avi_lookup`` is provided AND the variant dict has
+    ``chrom``/``ref_dna``/``alt_dna`` keys, the AlphaGenome Atlas AVI
+    score is used as the dominant signal for non-coding regulatory
+    variants (Avsec et al. *Nature* 2026). For coding-region variants
+    where AVI returns ``is_coding=True``, AVI is recorded as a secondary
+    signal and AlphaMissense still dominates.
     """
     scored: list[VariantScore] = []
     for v in variants:
@@ -795,10 +881,16 @@ def filter_variants(
             position=v["position"],
             wt_aa=v["wt_aa"],
             mut_aa=v["mut_aa"],
+            # Pass DNA-level coordinates through to score_variant; it
+            # skips the AVI lookup silently if any are missing.
+            chrom=v.get("chrom"),
+            ref_dna=v.get("ref_dna"),
+            alt_dna=v.get("alt_dna"),
             protein_length=prot_len,
             protein_sequence=prot_seq,
             uniprot_id=uniprot_id,
             am_lookup=am_lookup,
+            avi_lookup=avi_lookup,
             strict=strict,
         )
         if result is not None:

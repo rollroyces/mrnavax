@@ -44,6 +44,13 @@ class Variant:
     position: int  # 1-indexed AA position in the protein
     wt_aa: str
     mut_aa: str
+    # Optional DNA-level coordinates for AlphaGenome Atlas AVI lookup.
+    # When provided, the variant scorer uses AVI as the dominant signal
+    # for non-coding regulatory-region variants (Avsec et al. 2026).
+    # When absent, the variant falls through to the AM-or-BLOSUM path.
+    chrom: str | None = None
+    ref_dna: str | None = None
+    alt_dna: str | None = None
 
 
 def load_variants(path: str | Path) -> list[Variant]:
@@ -51,12 +58,22 @@ def load_variants(path: str | Path) -> list[Variant]:
     with open(path, newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
+            # Optional DNA-level coordinates — present in newer CSVs that
+            # include AlphaGenome Atlas regulatory variants alongside
+            # protein-coding ones. Older CSVs without these columns still
+            # work (chrom/ref_dna/alt_dna default to None).
+            chrom = row.get("chrom") or None
+            ref_dna = row.get("ref_dna") or None
+            alt_dna = row.get("alt_dna") or None
             out.append(
                 Variant(
                     gene=row["gene"],
                     position=int(row["position"]),
                     wt_aa=row["wt_aa"],
                     mut_aa=row["mut_aa"],
+                    chrom=chrom,
+                    ref_dna=ref_dna,
+                    alt_dna=alt_dna,
                 )
             )
     return out
@@ -448,9 +465,34 @@ def run_pipeline(
         from .variant_scorer import filter_variants
 
         v_dicts = [
-            {"gene": v.gene, "position": v.position, "wt_aa": v.wt_aa, "mut_aa": v.mut_aa}
+            {
+                "gene": v.gene,
+                "position": v.position,
+                "wt_aa": v.wt_aa,
+                "mut_aa": v.mut_aa,
+                # DNA-level coordinates for AlphaGenome Atlas AVI lookup.
+                # Both AlphaMissense (coding) and AVI (regulatory) flow
+                # through the same score_variant() entry point now.
+                "chrom": v.chrom,
+                "ref_dna": v.ref_dna,
+                "alt_dna": v.alt_dna,
+            }
             for v in variants
         ]
+        # Build the AVI lookup. Use the stdlib mock by default (CI +
+        # offline use); users with ALPHAGENOME_API_KEY set + the
+        # [variant-alphagenome] extra installed get the real Atlas
+        # adapter. Selected at the backend-selector level, not here.
+        avi_lookup_fn = None
+        if any(v.chrom is not None for v in variants):
+            try:
+                from .alphagenome_integration import (
+                    select_regulatory_scorer,
+                )
+                avi_lookup_fn = select_regulatory_scorer().score_variant
+            except Exception:
+                avi_lookup_fn = None
+
         scored = filter_variants(
             v_dicts,
             top_fraction=variant_filter_top_fraction,
@@ -459,6 +501,7 @@ def run_pipeline(
             protein_sequences=proteins,
             uniprot_ids=uniprot_ids,
             am_lookup=am_lookup_fn,
+            avi_lookup=avi_lookup_fn,
             strict=False,
         )
         keep_keys = {(s.gene, s.position, s.wt_aa, s.mut_aa) for s in scored}

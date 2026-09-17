@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-09-17
+
+### Added
+
+- **AlphaGenome Atlas AVI integration into `variant_scorer`.** The
+  `score_variant()` function now accepts `chrom`, `ref_dna`,
+  `alt_dna`, and `avi_lookup` keyword parameters. For variants where
+  the AVI lookup returns `is_coding=False`, the AVI score becomes the
+  dominant signal at weight 0.45 — same role AlphaMissense plays for
+  coding-region variants. For coding-region variants, AVI is recorded
+  as a secondary signal in `components` but does not dominate.
+- **`filter_variants()` extended with `avi_lookup`** — passes DNA-level
+  coordinates through to `score_variant()` so the scrna pipeline
+  benefits automatically.
+- **`Variant` dataclass extended with optional `chrom`, `ref_dna`,
+  `alt_dna` fields.** Backward-compatible: existing CSVs without these
+  columns still load (fields default to `None`).
+- **`sc_rna_pipeline.run_pipeline` auto-wires the AVI lookup** when any
+  input variant carries DNA coordinates. The Mock backend is used by
+  default (CI + offline use); users with `ALPHAGENOME_API_KEY` set +
+  the `[variant-alphagenome]` extra installed get the real Atlas
+  adapter automatically.
+- **13 new unit tests** in `tests/test_variant_scorer_avi.py` covering
+  parameter acceptance, dominant-signal routing for both coding and
+  regulatory variants, silent-failure on lookup errors / None returns /
+  missing DNA args, rationale strings, and end-to-end mock-as-avi-lookup.
+- **Backend check extended** to verify the AVI integration: coding
+  variant → AM dominates (rationale has no "(dominant)" on AVI),
+  regulatory variant → AVI dominates (rationale has "(dominant)").
+
+### Why this matters
+
+The previous variant prioritization pipeline used AlphaMissense for
+coding-region variants only — silently dropping the 98% of the genome
+that is non-coding regulatory. With this change, the same
+`score_variant()` entry point handles both: the `is_coding` flag from
+AlphaGenome Atlas routes the variant to the correct signal. A
+protein-coding variant with high AlphaMissense score still ranks high;
+a regulatory-region variant with high AVI score now also ranks high
+instead of falling through to BLOSUM62-only scoring.
+
 ## [0.15.0] - 2026-09-13
 
 ### Added

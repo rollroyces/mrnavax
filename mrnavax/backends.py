@@ -1275,6 +1275,11 @@ def _check_alphagenome_atlas() -> tuple[bool, str]:
          returns per-variant is_coding.
       5. regulatory_score(chrom, pos, ref, alt) returns an AVIResult
          with score in [0, 1].
+      6. AVI integration into score_variant: when avi_lookup is provided
+         with chrom/ref_dna/alt_dna AND the lookup returns is_coding=False,
+         AVI becomes the dominant signal at weight 0.45. Components dict
+         exposes alphagenome_atlas_score. For is_coding=True variants,
+         AlphaMissense still dominates; AVI is recorded as secondary.
     """
     from .alphagenome_integration import (
         AVIResult,
@@ -1282,6 +1287,8 @@ def _check_alphagenome_atlas() -> tuple[bool, str]:
         RegulatoryVariantScorer,
         regulatory_score,
     )
+    from .alphamissense_integration import AlphaMissenseResult
+    from .variant_scorer import score_variant
 
     # 1. AVIResult validation
     r = AVIResult(score=0.5, classification="moderate", is_coding=False)
@@ -1321,13 +1328,68 @@ def _check_alphagenome_atlas() -> tuple[bool, str]:
     if not (0.0 <= rs.score <= 1.0):
         bad.append(f"regulatory_score out of [0,1]: {rs.score}")
 
+    # 6. AVI integration into score_variant
+    # 6a. Coding variant: AM dominates, AVI is secondary
+    def am_coding(uniprot, wt, pos, mut):
+        return AlphaMissenseResult(
+            score=0.9,
+            classification="likely_pathogenic",
+            uniprot=uniprot,
+            aa_change=f"{wt}{pos}{mut}",
+        )
+
+    # Mock returns is_coding=True at even positions (140753336 is even).
+    # So AM should dominate over AVI here.
+    r_coding = score_variant(
+        "BRAF",
+        600,
+        "V",
+        "E",
+        chrom="chr7",
+        ref_dna="T",
+        alt_dna="A",
+        protein_length=766,
+        uniprot_id="P15056",
+        am_lookup=am_coding,
+        avi_lookup=mock.score_variant,
+    )
+    if "alphamissense_score" not in r_coding.components:
+        bad.append("AVI-integrated: AM score missing for coding variant")
+    if "alphagenome_atlas_score" not in r_coding.components:
+        bad.append("AVI-integrated: AVI score missing for coding variant")
+    # AM dominates → rationale should NOT have "(dominant)" on AVI
+    if "(dominant)" in r_coding.rationale:
+        bad.append("AVI-integrated: AVI should not be dominant for coding variant")
+
+    # 6b. Regulatory variant: AVI dominates
+    # Position 101 is odd → mock returns is_coding=False → AVI dominates.
+    r_reg = score_variant(
+        "REG_GENE",
+        101,
+        "A",
+        "G",
+        chrom="chr7",
+        ref_dna="A",
+        alt_dna="G",
+        protein_length=200,
+        am_lookup=am_coding,
+        avi_lookup=mock.score_variant,
+    )
+    if "alphagenome_atlas_score" not in r_reg.components:
+        bad.append("AVI-integrated: AVI score missing for regulatory variant")
+    if "(dominant)" not in r_reg.rationale:
+        bad.append("AVI-integrated: AVI should be dominant for regulatory variant")
+
     if bad:
         return False, "AlphaGenome Atlas backend issues: " + "; ".join(bad)
     return True, (
         f"AlphaGenome Atlas OK: AVI in [0, 1], classification bins "
         f"(<0.34 low, <0.564 moderate, >=0.564 high), mock deterministic "
         f"(even pos → coding, odd pos → regulatory), regulatory_score "
-        f"score={rs.score:.3f} class={rs.classification}"
+        f"score={rs.score:.3f} class={rs.classification}; AVI-integrated "
+        f"score_variant: coding variant → AM dominates (rationale "
+        f"no '(dominant)' on AVI), regulatory variant → AVI dominates "
+        f"(rationale has '(dominant)')"
     )
 
 
