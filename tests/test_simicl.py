@@ -18,8 +18,6 @@ import json
 import os
 import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from mrnavax.trial_similar import (
     DEFAULT_TOPK,
@@ -34,7 +32,6 @@ from mrnavax.trial_similar import (
     build_simicl_prompt,
     load_default_demo_store,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test helpers

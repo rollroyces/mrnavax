@@ -20,12 +20,8 @@ tests run without torch / huggingface_hub / a 135 MB download.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
 
 # ---------------------------------------------------------------------------
 # EmbeddingRequest / EmbeddingResult dataclasses
@@ -233,6 +229,7 @@ class TestMockProteinLMEmbedder(unittest.TestCase):
     def test_embedding_values_are_normalized(self) -> None:
         """Mock embeddings should be L2-normalized (matching ESM2 convention)."""
         import math
+
         from mrnavax.protein_lm_adapter import MockProteinLMEmbedder
         from mrnavax.protein_lm_protocols import EmbeddingRequest
 

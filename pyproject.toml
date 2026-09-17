@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mrnavax"
-version = "0.14.0"
+version = "0.15.0"
 description = "Practical Python tools for the AI-leverage layers in mRNA cancer therapy."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -45,6 +45,7 @@ protein-lm = ["torch>=2.0", "transformers>=4.40"]
 spatial-r = []  # STModule ships as a subprocess; users install R/Seurat/STModule themselves per the upstream vignette
 trial-medcpt = ["torch>=2.0", "transformers>=4.40"]
 scrna = ["scanpy>=1.10", "anndata>=0.10", "numpy", "scipy"]
+variant-alphagenome = ["alphagenome>=0.1"]  # AlphaGenome Atlas API client; non-commercial use only
 docs = [
   "mkdocs>=1.6",
   "mkdocs-material>=9.5",
@@ -52,7 +53,7 @@ docs = [
   "mkdocs-static-i18n[material]>=1.2",
   "pymdown-extensions>=10.7",
 ]
-all = ["openai>=1.40", "mhcflurry>=2.0", "pandas<2.3", "torch>=2.0", "transformers>=4.40", "scanpy>=1.10", "anndata>=0.10", "numpy", "scipy"]
+all = ["openai>=1.40", "mhcflurry>=2.0", "pandas<2.3", "torch>=2.0", "transformers>=4.40", "scanpy>=1.10", "anndata>=0.10", "numpy", "scipy", "alphagenome>=0.1"]
 dev = ["build>=1.0", "twine>=5.0", "pytest>=8.0"]
 
 [project.urls]

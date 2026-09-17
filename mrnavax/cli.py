@@ -7,6 +7,7 @@ import json as _json
 import sys
 from pathlib import Path
 
+from .alphagenome_integration import score_variants_from_csv
 from .codon_optimizer import _run_cli as codon_run
 from .lnp_advisor import _run_cli as lnp_run
 from .manufacturability import score_manufacturability
@@ -39,6 +40,11 @@ def main(argv: list[str] | None = None) -> int:
         help="spatial-transcriptomics tissue-module identification "
         "(STModule CLI or stdlib mock)",
     )
+    sub.add_parser(
+        "variant-regulatory",
+        help="AlphaGenome Atlas regulatory-variant impact scoring "
+        "(AVI score for non-coding regions; AlphaMissense handles coding)",
+    )
 
     args, rest = p.parse_known_args(argv)
     runners = {
@@ -52,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
         return _manufacture_run(rest)
     if args.tool == "spatial":
         return _spatial_run(rest)
+    if args.tool == "variant-regulatory":
+        return _variant_regulatory_run(rest)
     return runners[args.tool](rest)
 
 
@@ -169,6 +177,81 @@ def _spatial_run(argv: list[str]) -> int:
         return 2
 
     out_text = _json_spatial.dumps(result.to_dict(), indent=2)
+    if args.out:
+        Path(args.out).write_text(out_text + "\n")
+    print(out_text)
+    return 0
+
+
+def _variant_regulatory_run(argv: list[str]) -> int:
+    """CLI for AlphaGenome Atlas regulatory-variant impact scoring.
+
+    Reads a CSV with columns: chrom,pos,ref,alt,label (label optional)
+    and emits a JSON document with one entry per variant: AVI score,
+    classification, and is_coding flag. Variants are sorted by AVI
+    score descending (most-impactful first).
+
+    Without an API key (or with --backend=mock), uses a deterministic
+    stdlib mock. With --backend=alphagenome + ALPHAGENOME_API_KEY env
+    var, calls the official AlphaGenome Atlas API via subprocess.
+    """
+    import json as _json_vr
+
+    p = argparse.ArgumentParser(prog="mrnavax variant-regulatory")
+    p.add_argument(
+        "--csv",
+        required=True,
+        help="CSV with columns chrom,pos,ref,alt,label (label optional)",
+    )
+    p.add_argument(
+        "--backend",
+        choices=["auto", "mock", "alphagenome"],
+        default="auto",
+        help="auto picks alphagenome when ALPHAGENOME_API_KEY is set, "
+        "else mock",
+    )
+    p.add_argument("--out", default=None, help="output JSON file (default: stdout)")
+    args = p.parse_args(argv)
+
+    if args.backend == "mock":
+        from .alphagenome_integration import MockRegulatoryVariantScorer
+
+        backend = MockRegulatoryVariantScorer()
+    elif args.backend == "alphagenome":
+        from .alphagenome_integration import AlphaGenomeCLIAdapter
+
+        try:
+            backend = AlphaGenomeCLIAdapter()
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+    else:
+        from .alphagenome_integration import select_regulatory_scorer
+
+        backend = select_regulatory_scorer()
+
+    try:
+        results = score_variants_from_csv(args.csv, backend=backend)
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    out_text = _json_vr.dumps(
+        {
+            "tool": "variant-regulatory",
+            "backend": type(backend).__name__,
+            "n_variants": len(results),
+            "results": [
+                {
+                    "score": r.score,
+                    "classification": r.classification,
+                    "is_coding": r.is_coding,
+                }
+                for r in results
+            ],
+        },
+        indent=2,
+    )
     if args.out:
         Path(args.out).write_text(out_text + "\n")
     print(out_text)

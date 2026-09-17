@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-09-13
+
+### Added
+
+- **AlphaGenome Atlas integration for regulatory-variant prioritization.**
+  New module `mrnavax/alphagenome_integration.py` exposing the
+  `RegulatoryVariantScorer` Protocol + `AVIResult` dataclass, with two
+  backends:
+    - `MockRegulatoryVariantScorer` — stdlib-only, deterministic, SHA-256
+      hash of (chrom, pos, ref, alt) → [0, 1] AVI score. Always present.
+    - `AlphaGenomeCLIAdapter` — subprocess wrapper around the official
+      `alphagenome` Python package (Avsec et al., *Nature* 2026). Gated
+      behind the new `[variant-alphagenome]` extra; non-commercial use
+      only per Google DeepMind's terms.
+- **New CLI subcommand:** `mrnavax variant-regulatory --csv variants.csv`
+  emits a JSON document with one entry per variant: AVI score,
+  classification (low / moderate / high — thresholds match AlphaMissense
+  bins), and `is_coding` flag (True for coding-region variants where
+  AlphaMissense is the better signal; False for regulatory regions
+  where AlphaGenome Atlas is canonical).
+- **New bundled example CSV:** `mrnavax/examples/regulatory_variants.csv`
+  (7 rows: BRAF V600E, KRAS G12D, APC, TP53 promoter variants, plus
+  intergenic / regulatory-region rows).
+- **Subprocess shim** at `mrnavax/_shims/alphagenome_cli.py` — small
+  (~90 LOC) wrapper that loads the official `alphagenome` package
+  inside a subprocess, keeping the adapter module stdlib-only and the
+  heavy upstream dep opt-in.
+- **New backend integrity check** `variant.alphagenome_atlas` —
+  exercises the Protocol contract, mock determinism, AVIResult
+  validation, and regulatory_score convenience wrapper. Total
+  backend checks: **26/26** (was 25/25).
+- **18 new unit tests** in `tests/test_alphagenome_adapter.py` covering
+  AVIResult invariants, Protocol runtime_checkable, mock contract,
+  real adapter subprocess invocation shape, JSON payload round-trip,
+  end-to-end CSV scoring, CLI subcommand registration, and example
+  CSV schema.
+
+### Why this matters
+
+AlphaMissense (the existing integration) scores **coding-region
+missense variants** — the 2% of the genome that codes for proteins.
+AlphaGenome Atlas covers the remaining **98% of non-coding regulatory
+variants**, where AlphaMissense is silent. Together, the two adapters
+cover the entire genome:
+
+- `score_variant(chrom, pos, ref, alt).is_coding == True`  →  AlphaMissense
+- `score_variant(chrom, pos, ref, alt).is_coding == False` →  AlphaGenome Atlas
+
+### Notes
+
+- AlphaGenome Atlas outputs are **non-commercial only** per Google
+  DeepMind's terms of service. Commercial use requires the Google Cloud
+  Vertex AI deployable, not the public API used here. Same constraint
+  as the existing AlphaMissense integration (CC BY-NC-SA 4.0).
+- Mock `is_coding` heuristic uses **position parity** (even = coding,
+  odd = regulatory). The real Atlas API returns per-variant `is_coding`
+  from the upstream query.
+
 ## [0.13.1] - 2026-09-13
 
 ### Fixed

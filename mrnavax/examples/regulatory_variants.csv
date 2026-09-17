@@ -1,0 +1,8 @@
+chrom,pos,ref,alt,label
+chr7,140753337,T,A,BRAF V600E-adjacent regulatory variant (odd pos)
+chr7,140753336,T,A,BRAF V600E (coding)
+chr11,12345678,A,G,intergenic regulatory variant
+chr17,7675089,C,T,TP53 promoter regulatory variant (odd pos)
+chr5,112839510,C,T,APC promoter regulatory variant
+chr12,25245351,C,A,KRAS G12D-adjacent regulatory variant (odd pos)
+chr12,25245350,C,A,KRAS G12D (coding)

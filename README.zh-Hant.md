@@ -1,15 +1,15 @@
 # mrnavax
 
 > mRNA 癌症治療中 AI 加槓桿層的實用 Python 工具。
-> 純標準函式庫核心，七個可執行工具，八個真實模型配接器置於
-> Protocol 契約之後，三份文件語系，174 個測試，25 項後端完整性檢查。
+> 純標準函式庫核心，八個可執行工具，九個真實模型配接器置於
+> Protocol 契約之後，三份文件語系，192 個測試，26 項後端完整性檢查。
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.14.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.15.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/zh-Hant/)
-[![Protocol adapters](https://img.shields.io/badge/adapters-8%20real%20models-purple)](https://github.com/rollroyces/mrnavax/tree/main/mrnavax)
+[![Protocol adapters](https://img.shields.io/badge/adapters-9%20real%20models-purple)](https://github.com/rollroyces/mrnavax/tree/main/mrnavax)
 
 ![mrnavax 管線：密碼子 → 變異 → 新抗原 → 試驗 → LNP → 製造](./docs/assets/pipeline.svg)
 
@@ -69,6 +69,7 @@ flowchart LR
 | `manufacture` | mRNA 可製造性檢查（poly-A、Kozak、GC、ARE、終止密碼子） | 濕實驗 | 業界 mRNA 設計指引 |
 | `lnp` | LNP 組成推薦 | 濕實驗 | Witten 2025、Li 2024 |
 | `spatial` | STModule 空間轉錄組學組織模組識別 | 空間轉錄組學 | STModule (Wang et al., *Genome Medicine* 2025) |
+| `variant-regulatory` | AlphaGenome Atlas 非編碼調控變異 AVI 評分 | 變異優先排序 | AlphaGenome Atlas (Avsec et al., *Nature* 2026) |
 
 **Protocol 契約之後的真實模型配接器**（透過 `pip install` extras 選擇性安裝）：
 
@@ -125,6 +126,10 @@ python -m mrnavax.cli spatial \
     --count-file mrnavax/examples/st_bc2_count_matrix.tsv \
     --locations-file mrnavax/examples/st_bc2_locations.tsv \
     --platform ST --num-modules 10
+
+# 8. AlphaGenome Atlas 非編碼調控變異 AVI 評分
+python -m mrnavax.cli variant-regulatory \
+    --csv mrnavax/examples/regulatory_variants.csv
 ```
 
 執行 `pip install -e .` 後，同樣的 CLI 也會以 `mrnavax` 主控台腳本形式安裝。

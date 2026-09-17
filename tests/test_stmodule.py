@@ -18,13 +18,11 @@ from __future__ import annotations
 
 import csv
 import json
-import os
 import subprocess
 import tempfile
 import unittest
-from dataclasses import asdict, fields, is_dataclass
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # Forward-import the module under test (will fail until module is written)
@@ -270,17 +268,16 @@ class TestSpatialModuleResultDataclass(unittest.TestCase):
 
 class TestSpatialModuleBackendProtocol(unittest.TestCase):
     def test_protocol_is_runtime_checkable(self) -> None:
-        from mrnavax.spatial_protocols import SpatialModuleBackend
         from mrnavax.spatial_module_adapter import (
             MockSpatialModuleBackend,
         )
+        from mrnavax.spatial_protocols import SpatialModuleBackend
 
         m = MockSpatialModuleBackend()
         self.assertIsInstance(m, SpatialModuleBackend)
 
     def test_protocol_method_signature(self) -> None:
         """All backends must expose .run(data) -> SpatialModuleResult."""
-        from mrnavax.spatial_protocols import SpatialModuleBackend
         from mrnavax.spatial_module_adapter import (
             MockSpatialModuleBackend,
         )
@@ -289,12 +286,12 @@ class TestSpatialModuleBackendProtocol(unittest.TestCase):
         self.assertTrue(callable(getattr(m, "run", None)))
 
     def test_mock_backend_run_returns_correct_type(self) -> None:
+        from mrnavax.spatial_module_adapter import (
+            MockSpatialModuleBackend,
+        )
         from mrnavax.spatial_protocols import (
             SpatialData,
             SpatialModuleResult,
-        )
-        from mrnavax.spatial_module_adapter import (
-            MockSpatialModuleBackend,
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -330,6 +327,7 @@ class TestMockSpatialModuleBackend(unittest.TestCase):
 
     def test_returns_correct_num_modules(self) -> None:
         from dataclasses import replace
+
         from mrnavax.spatial_module_adapter import (
             MockSpatialModuleBackend,
         )
@@ -412,10 +410,10 @@ class TestMockSpatialModuleBackend(unittest.TestCase):
     def test_handles_missing_spot_in_locations(self) -> None:
         """Count matrix has 12 spots, locations have 11 — mock should
         not crash; just use the intersection."""
-        from mrnavax.spatial_protocols import SpatialData
         from mrnavax.spatial_module_adapter import (
             MockSpatialModuleBackend,
         )
+        from mrnavax.spatial_protocols import SpatialData
 
         tmp = tempfile.mkdtemp()
         count = Path(tmp) / "counts.tsv"
@@ -897,10 +895,10 @@ class TestMockBackendZeroSpots(unittest.TestCase):
     """Edge case: empty count matrix should not crash."""
 
     def test_empty_count_matrix(self) -> None:
-        from mrnavax.spatial_protocols import SpatialData
         from mrnavax.spatial_module_adapter import (
             MockSpatialModuleBackend,
         )
+        from mrnavax.spatial_protocols import SpatialData
 
         with tempfile.TemporaryDirectory() as tmp:
             count = Path(tmp) / "counts.tsv"
@@ -920,10 +918,10 @@ class TestMockBackendZeroSpots(unittest.TestCase):
     def test_malformed_count_matrix_graceful(self) -> None:
         """A completely garbage file should still produce a result, not
         raise. The mock's _read_first_column swallows I/O errors."""
-        from mrnavax.spatial_protocols import SpatialData
         from mrnavax.spatial_module_adapter import (
             MockSpatialModuleBackend,
         )
+        from mrnavax.spatial_protocols import SpatialData
 
         with tempfile.TemporaryDirectory() as tmp:
             count = Path(tmp) / "counts.tsv"

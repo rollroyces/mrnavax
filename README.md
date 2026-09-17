@@ -1,16 +1,16 @@
 # mrnavax
 
 > Practical Python tools for the AI-leverage layers in mRNA cancer therapy.
-> Stdlib-only core, seven runnable tools, eight real-model adapters behind
-> Protocol contracts, three documentation locales, 174 tests, 25 backend
+> Stdlib-only core, eight runnable tools, nine real-model adapters behind
+> Protocol contracts, three documentation locales, 192 tests, 26 backend
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.14.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.15.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
-[![Protocol adapters](https://img.shields.io/badge/adapters-8%20real%20models-purple)](https://github.com/rollroyces/mrnavax/tree/main/mrnavax)
+[![Protocol adapters](https://img.shields.io/badge/adapters-9%20real%20models-purple)](https://github.com/rollroyces/mrnavax/tree/main/mrnavax)
 
 ![mrnavax pipeline — codon → variant → neoantigen → trial → LNP → manufacture](./docs/assets/pipeline.svg)
 
@@ -71,6 +71,7 @@ flowchart LR
 | `manufacture` | mRNA manufacturability checks (poly-A, Kozak, GC, ARE, stops) | Wet-lab | Industry mRNA design guidelines |
 | `lnp` | LNP composition recommender | Wet-lab | Witten 2025, Li 2024 |
 | `spatial` | STModule spatial-transcriptomics tissue-module identification | Spatial transcriptomics | STModule (Wang et al., *Genome Medicine* 2025) |
+| `variant-regulatory` | AlphaGenome Atlas AVI score for non-coding regulatory variants | Variant prioritization | AlphaGenome Atlas (Avsec et al., *Nature* 2026) |
 
 **Real-model adapters behind Protocol contracts** (opt-in via `pip install` extras):
 
@@ -127,6 +128,10 @@ python -m mrnavax.cli spatial \
     --count-file mrnavax/examples/st_bc2_count_matrix.tsv \
     --locations-file mrnavax/examples/st_bc2_locations.tsv \
     --platform ST --num-modules 10
+
+# 8. AlphaGenome Atlas regulatory-variant AVI scoring
+python -m mrnavax.cli variant-regulatory \
+    --csv mrnavax/examples/regulatory_variants.csv
 ```
 
 After `pip install -e .`, the same CLI is also installed as the console
@@ -143,6 +148,7 @@ pip install -e ".[neoantigen-medcpt]"          # MedCPT query/article encoders (
 pip install -e ".[protein-lm]"                # ESM2 protein language model (~135 MB)
 pip install -e ".[trial-medcpt]"               # MedCPT for trial retrieval
 pip install -e ".[scrna]"                     # scanpy + anndata + scGPT plug point
+pip install -e ".[variant-alphagenome]"        # AlphaGenome Atlas regulatory-variant scoring
 pip install -e ".[docs]"                      # mkdocs-material + mkdocs-static-i18n
 pip install -e ".[dev]"                       # ruff + pytest
 pip install -e ".[all]"                       # everything above
@@ -240,6 +246,25 @@ demonstrations outperform random few-shot.
 ```bash
 mrnavax trial --patient patient.txt --trials trials.jsonl \
     --matcher trialgpt-simicl --top-k 10
+```
+
+### `AlphaGenome Atlas` (Avsec et al., *Nature* 2026)
+
+Pre-computed regulatory-variant impact (AVI) scores for **all 9 billion
+possible single-nucleotide variants** in the human genome. Where
+AlphaMissense (Cheng et al. 2023) scores **coding-region** missense
+variants, AlphaGenome Atlas scores **non-coding regulatory** variants
+— covering the 98% of the genome where AlphaMissense is silent.
+Adapter uses the official `alphagenome` Python package via subprocess
+(gated behind the `[variant-alphagenome]` extra; non-commercial use
+only per Google DeepMind's terms).
+
+```bash
+# Real: when ALPHAGENOME_API_KEY is set + [variant-alphagenome] installed
+mrnavax variant-regulatory --csv variants.csv --backend alphagenome
+
+# Mock: same shape, stdlib only
+mrnavax variant-regulatory --csv variants.csv --backend mock
 ```
 
 ### Other real-model integrations

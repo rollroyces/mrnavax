@@ -30,12 +30,9 @@ from mrnavax.codon_ribodecode_adapter import (
     RiboDecodeCLIAdapter,
     RiboDecodeNotInstalled,
     TranslationModelCLIAdapter,
-    pred_translation_available,
-    ribo_decode_available,
     select_codon_optimizer,
     select_translation_predictor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test helpers

@@ -1258,6 +1258,79 @@ def _check_alphamissense_integration() -> tuple[bool, str]:
     )
 
 
+@register("variant.alphagenome_atlas")
+def _check_alphagenome_atlas() -> tuple[bool, str]:
+    """AlphaGenome Atlas Protocol adapter: regulatory-variant impact scoring.
+
+    Validates:
+      1. AVIResult dataclass: score in [0, 1], classification bins
+         derived from the score (low/moderate/high thresholds match
+         the AlphaMissense bins for consistent triage).
+      2. RegulatoryVariantScorer Protocol is runtime_checkable.
+      3. MockRegulatoryVariantScorer satisfies the Protocol and
+         produces deterministic results across calls.
+      4. Mock distinguishes coding-region variants (use AlphaMissense)
+         from regulatory-region variants (use AlphaGenome Atlas) via
+         position parity — purely a mock heuristic; the real Atlas
+         returns per-variant is_coding.
+      5. regulatory_score(chrom, pos, ref, alt) returns an AVIResult
+         with score in [0, 1].
+    """
+    from .alphagenome_integration import (
+        AVIResult,
+        MockRegulatoryVariantScorer,
+        RegulatoryVariantScorer,
+        regulatory_score,
+    )
+
+    # 1. AVIResult validation
+    r = AVIResult(score=0.5, classification="moderate", is_coding=False)
+    assert 0.0 <= r.score <= 1.0
+    assert r.classification == "moderate"
+
+    bad: list[str] = []
+    try:
+        AVIResult(score=1.5, classification="high", is_coding=False)
+    except ValueError:
+        pass
+    else:
+        bad.append("out-of-range score should raise")
+
+    # 2. Protocol runtime_checkable
+    mock = MockRegulatoryVariantScorer()
+    if not isinstance(mock, RegulatoryVariantScorer):
+        bad.append("mock does not satisfy Protocol")
+
+    # 3. Determinism
+    a = mock.score_variant("chr7", 140753336, "T", "A")
+    b = mock.score_variant("chr7", 140753336, "T", "A")
+    if a.score != b.score or a.classification != b.classification:
+        bad.append("mock not deterministic")
+
+    # 4. Coding vs regulatory distinction
+    coding = mock.score_variant("chr7", 140753336, "T", "A")  # even pos
+    reg = mock.score_variant("chr7", 140753337, "T", "A")     # odd pos
+    if not coding.is_coding or reg.is_coding:
+        bad.append(
+            f"coding/regulatory distinction failed: "
+            f"even={coding.is_coding}, odd={reg.is_coding}"
+        )
+
+    # 5. regulatory_score convenience wrapper
+    rs = regulatory_score("chr7", 140753336, "T", "A")
+    if not (0.0 <= rs.score <= 1.0):
+        bad.append(f"regulatory_score out of [0,1]: {rs.score}")
+
+    if bad:
+        return False, "AlphaGenome Atlas backend issues: " + "; ".join(bad)
+    return True, (
+        f"AlphaGenome Atlas OK: AVI in [0, 1], classification bins "
+        f"(<0.34 low, <0.564 moderate, >=0.564 high), mock deterministic "
+        f"(even pos → coding, odd pos → regulatory), regulatory_score "
+        f"score={rs.score:.3f} class={rs.classification}"
+    )
+
+
 @register("scrna.structural_disruption_chou_fasman")
 def _check_structural_disruption() -> tuple[bool, str]:
     """L→P in a helix context must score higher than L→P in a coil context.
