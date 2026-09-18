@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-09-18
+
+### Changed
+
+- **Internal refactor**: ``mrnavax/variant_scorer.py`` is now 891
+  lines (was 976) — the four-sign scoring composition logic has
+  been split into two private helper modules:
+    - ``mrnavax/_scoring_components.py`` — ``LocalComponents``
+      dataclass + ``compute_local_components`` (BLOSUM62 +
+      driver-gene + hydrophobicity + structural disruption) and
+      ``local_rationale``.
+    - ``mrnavax/_scoring_lookups.py`` — ``compute_am_component``,
+      ``compute_avi_component``, ``compute_conservation_component``
+      (the silent-failure pattern for upstream-model lookups) plus
+      their respective dataclasses.
+- **score_variant body reduced** to 116 lines of orchestration:
+  validate → compute local → compute AM/AVI/PhyloP → combine →
+  rationale → return. ``_combine_components`` (83 lines) holds the
+  weighted-combination logic.
+- **No public API change** — ``score_variant``, ``filter_variants``,
+  ``VariantScore``, and every backend check / test still pass
+  unchanged. The 249-test suite + 30-check backend suite all green.
+
+### Why this matters
+
+The four-signal composition (BLOSUM62 + driver + structural + AM →
+AVI → PhyloP) was previously crammed into one ~290-line function.
+Splitting it into focused helpers makes:
+  * the per-component logic unit-testable in isolation (run just
+    ``compute_local_components`` on a hand-built input and assert
+    on the dataclass fields)
+  * the upstream-lookup pattern (silent-failure, range-check,
+    weight-assignment) reusable for any future 4th signal
+  * the weighted-combination logic readable at a glance instead
+    of buried in a 290-line block
+
+### New public helpers (private)
+
+- ``mrnavax/_scoring_components.py``:
+  ``LocalComponents`` dataclass, ``compute_local_components(gene,
+  wt_aa, mut_aa, position, protein_length, protein_sequence,
+  driver_genes)`` returns ``LocalComponents``;
+  ``local_rationale(local, gene, wt_aa, mut_aa)`` returns list of
+  rationale string fragments.
+- ``mrnavax/_scoring_lookups.py``:
+  ``AlphaMissenseComponent``, ``AVIComponent``,
+  ``ConservationComponent`` dataclasses;
+  ``compute_am_component(...)``, ``compute_avi_component(...)``,
+  ``compute_conservation_component(...)`` — each returns the
+  component dataclass or ``None`` (silent failure).
+
+These are underscore-prefixed (private); downstream code should call
+``mrnavax.variant_scorer.score_variant``.
+
 ## [0.21.0] - 2026-09-17
 
 ### Added

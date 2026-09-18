@@ -577,35 +577,19 @@ def score_variant(
     Returns ``None`` for unknown amino acids (silent-mode default) or raises
     ``ValueError`` when ``strict=True``.
 
-    If ``protein_sequence`` is supplied, the score includes a
-    Chou-Fasman structural-disruption component (alpha-helix / beta-strand
-    breakers in structured regions score higher).
+    The 4-signal composition:
+      * AlphaMissense (Cheng 2023) — dominant for coding variants (0.45)
+      * AlphaGenome Atlas AVI (Avsec 2026) — dominant for non-coding
+        regulatory variants (0.45)
+      * BLOSUM62 + driver-gene + hydrophobicity + structural
+        disruption — always computed, split into the residual weight
+      * PhyloP46way conservation (Pollard 2010) — small bonus
+        when conservation > 0
 
-    If ``uniprot_id`` and ``am_lookup`` are both supplied, the score
-    includes the AlphaMissense pathogenicity probability (Cheng et al.,
-    *Science* 2023) as a high-weight component. AlphaMissense was trained
-    on observed-vs-expected variant frequency in 2M+ human proteins and
-    has AUC 0.94 on saturation mutagenesis benchmarks — supplying it
-    pushes the variant scorer from ~3/10 to ~7/10 against the frontier.
-
-    If ``chrom`` + ``ref_dna`` + ``alt_dna`` + ``avi_lookup`` are all
-    supplied AND the lookup returns an ``AVIResult`` with
-    ``is_coding=False``, the AlphaGenome Atlas AVI score (Avsec et al.,
-    *Nature* 2026) becomes the dominant signal at weight 0.45 — same
-    role AlphaMissense plays for coding-region variants. This lets a
-    single ``score_variant`` call handle both coding (AM) and
-    non-coding-regulatory (AVI) variants in a uniform pipeline. The
-    lookup is silent: a network error or None return drops the
-    component rather than raising.
-
-    If ``chrom`` + ``pos`` + ``conservation_lookup`` are all supplied
-    AND the lookup returns a float in [-1, 1], the PhyloP46way
-    evolutionary-conservation score is recorded in components as the
-    4th coding-region signal (UCSC 46-way placental alignment;
-    Pollard et al. 2010). Composition with AlphaMissense: AM is
-    still the dominant 0.45 signal; PhyloP adds a smaller
-    conservation boost. The lookup is silent: None / error /
-    out-of-range drops the component rather than raising.
+    All upstream-model lookups are silent: a network error / None
+    return / out-of-range value drops the component without raising.
+    See ``mrnavax/_scoring_components.py`` and
+    ``mrnavax/_scoring_lookups.py`` for the implementation.
 
     Call ``avi_lookup`` as ``avi_lookup(chrom, position, ref_dna,
     alt_dna)``. Call ``conservation_lookup`` as
@@ -613,9 +597,18 @@ def score_variant(
     if not supplied separately). If any of the DNA-level arguments
     are missing, the corresponding lookup is skipped silently.
     """
+    from ._scoring_components import (
+        compute_local_components,
+        local_rationale,
+    )
+    from ._scoring_lookups import (
+        compute_am_component,
+        compute_avi_component,
+        compute_conservation_component,
+    )
+
     wt_aa = wt_aa.upper()
     mut_aa = mut_aa.upper()
-    driver_genes = driver_genes if driver_genes is not None else DRIVER_GENES
 
     # Validate amino acids — silent default returns None rather than
     # silently maxing the BLOSUM penalty, which would inflate the score.
@@ -627,208 +620,44 @@ def score_variant(
             )
         return None
 
-    # ---- 1. substitution severity (BLOSUM62) ----
-    blosum = BLOSUM62.get((wt_aa, mut_aa), -4)  # unknown substitutions get a strong penalty
-    # BLOSUM ranges roughly -4 (disruptive) to +11 (identity).
-    # Map to [0, 1] where low BLOSUM = high priority = high score
-    blosum_norm = 1.0 - (blosum + 4) / 15.0  # 1.0 when blosum=-4, 0.0 when blosum=11
-    blosum_norm = max(0.0, min(1.0, blosum_norm))
+    # ---- Local (no-upstream) components ----
+    local = compute_local_components(
+        gene=gene,
+        wt_aa=wt_aa,
+        mut_aa=mut_aa,
+        position=position,
+        protein_length=protein_length,
+        protein_sequence=protein_sequence,
+        driver_genes=driver_genes,
+    )
 
-    # ---- 2. driver-gene boost ----
-    driver_boost = 0.2 if gene in driver_genes else 0.0
+    # ---- Upstream-model components (silent-failure) ----
+    am = compute_am_component(uniprot_id, wt_aa, position, mut_aa, am_lookup)
+    avi = compute_avi_component(chrom, position, ref_dna, alt_dna, avi_lookup)
+    cons = compute_conservation_component(
+        chrom, pos if pos is not None else position, conservation_lookup
+    )
 
-    # ---- 3. position in protein (avoid first/last 10 AA — often cleaved) ----
-    if protein_length is not None:
-        n_term = position <= 10
-        c_term = position >= protein_length - 10
-        position_penalty = -0.15 if (n_term or c_term) else 0.0
-    else:
-        position_penalty = 0.0
+    # ---- Weighted combination ----
+    # Priority of dominant signal: AVI > AM > neither. Conservation
+    # adds a small bonus when present.
+    raw, components = _combine_components(local, am, avi, cons)
 
-    # ---- 4. hydrophobicity change ----
-    h_wt = HYDROPHOBICITY.get(wt_aa, 0.0)
-    h_mut = HYDROPHOBICITY.get(mut_aa, 0.0)
-    dh = abs(h_wt - h_mut)
-    # Normalize to [0, 1] (max delta is ~9 for R→I)
-    hydro_norm = min(1.0, dh / 9.0)
-
-    # ---- 5. structural disruption (Chou-Fasman) ----
-    struct_penalty = 0.0
-    if protein_sequence is not None and len(protein_sequence) >= position:
-        struct_penalty = structural_disruption_penalty(protein_sequence, position, wt_aa, mut_aa)
-
-    # ---- 6. AlphaMissense (DeepMind pathogenicity) ----
-    am_score: float | None = None
-    am_classification: str | None = None
-    am_weight = 0.0
-    if uniprot_id is not None and am_lookup is not None:
-        try:
-            am_result = am_lookup(uniprot_id, wt_aa, position, mut_aa)
-        except Exception:
-            am_result = None
-        if am_result is not None:
-            am_score = am_result.score
-            am_classification = am_result.classification
-            # When AlphaMissense is available, it gets the largest share of
-            # the score — it's the highest-fidelity signal here.
-            am_weight = 0.45
-
-    # ---- 6b. AlphaGenome Atlas AVI (regulatory-variant impact) ----
-    # Routes based on the AVIResult.is_coding flag returned by the lookup:
-    #   is_coding=False  → AVI is the dominant signal (0.45 weight,
-    #                      non-coding regulatory variant; AlphaMissense is silent)
-    #   is_coding=True   → AVI is a secondary signal (recorded in
-    #                      components but does NOT dominate; AlphaMissense wins)
-    # The lookup is silent: a network error, None return, or missing
-    # chrom/ref_dna/alt_dna drops the component rather than raising.
-    avi_score: float | None = None
-    avi_classification: str | None = None
-    avi_is_coding: bool | None = None
-    avi_weight = 0.0
-    if (
-        avi_lookup is not None
-        and chrom is not None
-        and ref_dna is not None
-        and alt_dna is not None
-    ):
-        try:
-            avi_result = avi_lookup(chrom, position, ref_dna, alt_dna)
-        except Exception:
-            avi_result = None
-        if avi_result is not None:
-            avi_score = avi_result.score
-            avi_classification = avi_result.classification
-            avi_is_coding = avi_result.is_coding
-            # Dominant signal only when the Atlas reports the variant as
-            # non-coding regulatory. For coding-region variants where
-            # AlphaMissense is the canonical signal, AVI is a secondary
-            # observation recorded in components but not weighted.
-            if not avi_result.is_coding:
-                avi_weight = 0.45
-
-    # ---- 6c. PhyloP46way evolutionary conservation (UCSC 46-way) ----
-    # The 4th coding-region signal. PhyloP > 0 → conserved (likely
-    # functional), < 0 → fast-evolving (likely neutral). Recorded in
-    # components for transparency; does NOT compete with AlphaMissense
-    # for the dominant-signal slot. The lookup is silent: None / error
-    # / out-of-range drops the component rather than raising.
-    #
-    # `pos` parameter: when the caller supplies `pos` explicitly, use
-    # it (allows DNA-level variant positions to differ from the
-    # protein position `position`). When absent, fall back to the
-    # protein `position` argument (most callers use the same number).
-    conservation_score_val: float | None = None
-    if chrom is not None and conservation_lookup is not None:
-        lookup_pos = pos if pos is not None else position
-        try:
-            raw = conservation_lookup(chrom, lookup_pos)
-        except Exception:
-            raw = None
-        if raw is not None:
-            try:
-                val = float(raw)
-            except (TypeError, ValueError):
-                val = None
-            if val is not None and -1.0 <= val <= 1.0:
-                conservation_score_val = val
-
-    # ---- 7. weighted combination ----
-    # Priority of dominant signal:
-    #   1. AVI (is_coding=False)        → avi_weight = 0.45
-    #   2. AlphaMissense (provided)     → am_weight = 0.45
-    #   3. neither                      → all components weighted as before
-    if avi_weight > 0:
-        # AVI is the dominant signal (regulatory-region variant).
-        other_total = 1.0 - avi_weight  # 0.55 across the rest
-        raw = avi_weight * (avi_score or 0.0) + other_total * (
-            0.35 * blosum_norm
-            + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
-            + 0.15 * hydro_norm
-            + 0.20 * struct_penalty
-            + 0.10 * (1.0 if position_penalty == 0 else 0.0)
-            + position_penalty
-            # PhyloP adds a small bonus when both are positive
-            # (variant at a conserved site, regardless of coding status).
-            + (0.10 if conservation_score_val is not None and conservation_score_val > 0.3 else 0.0)
+    # ---- Rationale ----
+    rationale_parts = local_rationale(local, gene, wt_aa, mut_aa)
+    if am.weight > 0 or am.classification:
+        rationale_parts.append(
+            f"AlphaMissense pathogenicity={am.score:.3f} ({am.classification})"
         )
-    elif am_weight > 0:
-        # AlphaMissense is the dominant signal; the other components
-        # act as tiebreakers when AM is missing or in the ambiguous band.
-        # PhyloP conservation adds a smaller boost when both AM and
-        # conservation are positive (the variant is conserved AND
-        # likely-pathogenic by AM — strong combined signal).
-        other_total = 1.0 - am_weight  # 0.55 across the rest
-        phylo_boost = (
-            0.10 * (conservation_score_val or 0.0)
-            if conservation_score_val is not None and conservation_score_val > 0
-            else 0.0
+    if avi is not None:
+        tag = " (dominant)" if avi.weight > 0 else ""
+        rationale_parts.append(
+            f"AlphaGenome AVI={avi.score:.3f} ({avi.classification}){tag}"
         )
-        raw = am_weight * (am_score or 0.0) + other_total * (
-            0.35 * blosum_norm
-            + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
-            + 0.15 * hydro_norm
-            + 0.20 * struct_penalty
-            + 0.10 * (1.0 if position_penalty == 0 else 0.0)
-            + position_penalty
-        ) + phylo_boost
-    else:
-        # Neither AVI nor AM — original weighted combination + PhyloP bonus
-        phylo_boost = (
-            0.10 * (conservation_score_val or 0.0)
-            if conservation_score_val is not None and conservation_score_val > 0
-            else 0.0
-        )
-        raw = (
-            0.35 * blosum_norm
-            + 0.20 * (driver_boost / 0.2 if driver_boost > 0 else 0.0)
-            + 0.15 * hydro_norm
-            + 0.20 * struct_penalty
-            + 0.10 * (1.0 if position_penalty == 0 else 0.0)
-            + position_penalty
-        ) + phylo_boost
+    if cons is not None:
+        rationale_parts.append(f"PhyloP46way conservation={cons.score:+.3f}")
+
     normalized = max(0.0, min(1.0, raw))
-
-    components = {
-        "blosum62_score": blosum,
-        "blosum62_norm": round(blosum_norm, 3),
-        "driver_gene": gene in driver_genes,
-        "hydrophobicity_delta": round(dh, 2),
-        "position_penalty": position_penalty,
-        "structural_disruption": struct_penalty,
-    }
-    if am_score is not None:
-        components["alphamissense_score"] = am_score
-        components["alphamissense_classification"] = am_classification
-    if avi_score is not None:
-        components["alphagenome_atlas_score"] = avi_score
-        components["alphagenome_atlas_classification"] = avi_classification
-        if avi_is_coding is not None:
-            components["alphagenome_atlas_is_coding"] = avi_is_coding
-    if conservation_score_val is not None:
-        components["phylop46way_score"] = conservation_score_val
-
-    rationale_parts = [
-        f"BLOSUM62 {wt_aa}→{mut_aa} = {blosum}",
-        f"Δhydrophobicity = {dh:.1f}",
-    ]
-    if gene in driver_genes:
-        rationale_parts.append(f"{gene} is a known driver gene (+boost)")
-    if position_penalty < 0:
-        rationale_parts.append(f"position {position} near terminus (penalty)")
-    if am_score is not None:
-        rationale_parts.append(f"AlphaMissense pathogenicity={am_score:.3f} ({am_classification})")
-    if avi_score is not None:
-        # Show AVI score with 3 decimals; tag whether it's the dominant
-        # signal (regulatory) or a secondary observation (coding).
-        tag = " (dominant)" if avi_weight > 0 else ""
-        rationale_parts.append(
-            f"AlphaGenome AVI={avi_score:.3f} ({avi_classification}){tag}"
-        )
-    if conservation_score_val is not None:
-        rationale_parts.append(
-            f"PhyloP46way conservation={conservation_score_val:+.3f}"
-        )
-
     return VariantScore(
         gene=gene,
         position=position,
@@ -839,6 +668,92 @@ def score_variant(
         components=components,
         rationale="; ".join(rationale_parts),
     )
+
+
+def _combine_components(
+    local,
+    am,
+    avi,
+    cons,
+) -> tuple[float, dict]:
+    """Combine the 4 scoring components into a single raw score +
+    components dict.
+
+    Returns (raw, components). Components dict matches the previous
+    contract: BLOSUM62 + driver + hydrophobicity + structural
+    disruption always present; AM / AVI / PhyloP entries added when
+    available.
+    """
+    components: dict = {
+        "blosum62_score": local.blosum_score,
+        "blosum62_norm": round(local.blosum_norm, 3),
+        "driver_gene": local.driver_gene,
+        "hydrophobicity_delta": round(local.hydro_delta, 2),
+        "position_penalty": local.position_penalty,
+        "structural_disruption": local.structural_disruption,
+    }
+    if am.weight > 0 or am.classification:
+        components["alphamissense_score"] = am.score
+        components["alphamissense_classification"] = am.classification
+
+    if avi is not None:
+        components["alphagenome_atlas_score"] = avi.score
+        components["alphagenome_atlas_classification"] = avi.classification
+        if avi.is_coding is not None:
+            components["alphagenome_atlas_is_coding"] = avi.is_coding
+
+    if cons is not None:
+        components["phylop46way_score"] = cons.score
+
+    # Weighted combination. The dominant signal slot takes 0.45;
+    # the residual 0.55 is split among the local components plus a
+    # small conservation bonus.
+    if avi is not None and avi.weight > 0:
+        # AVI dominates (regulatory-region variant).
+        other_total = 1.0 - avi.weight
+        raw = avi.weight * avi.score + other_total * (
+            0.35 * local.blosum_norm
+            + 0.20 * (0.2 if local.driver_gene else 0.0)
+            + 0.15 * local.hydro_norm
+            + 0.20 * local.structural_disruption
+            + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
+            + local.position_penalty
+            + (0.10 if cons is not None and cons.score > 0.3 else 0.0)
+        )
+    elif am.weight > 0:
+        # AlphaMissense dominates (coding-region variant).
+        other_total = 1.0 - am.weight
+        phylo_boost = (
+            0.10 * cons.score
+            if cons is not None and cons.score > 0
+            else 0.0
+        )
+        raw = am.weight * am.score + other_total * (
+            0.35 * local.blosum_norm
+            + 0.20 * (0.2 if local.driver_gene else 0.0)
+            + 0.15 * local.hydro_norm
+            + 0.20 * local.structural_disruption
+            + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
+            + local.position_penalty
+        ) + phylo_boost
+    else:
+        # Neither AVI nor AM — local-only weighted combination + PhyloP.
+        phylo_boost = (
+            0.10 * cons.score
+            if cons is not None and cons.score > 0
+            else 0.0
+        )
+        raw = (
+            0.35 * local.blosum_norm
+            + 0.20 * (0.2 if local.driver_gene else 0.0)
+            + 0.15 * local.hydro_norm
+            + 0.20 * local.structural_disruption
+            + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
+            + local.position_penalty
+        ) + phylo_boost
+
+    return raw, components
+
 
 
 def predict_secondary_structure(protein: str, *, window: int = 6) -> dict[int, str]:
