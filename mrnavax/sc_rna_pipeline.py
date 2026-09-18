@@ -417,6 +417,18 @@ def run_pipeline(
 ) -> PipelineReport:
     """Run the full pipeline. Returns a structured report.
 
+    Orchestrates 5 stages:
+      1. Load inputs (expression matrix, variants, protein FASTA).
+      2. Filter variants with optional AlphaMissense / AVI / PhyloP
+         lookups wired in (``_scrna_filter.filter_variants_with_lookups``).
+      3. Cluster cells and identify the tumor cluster.
+      4. Emit peptide candidates for tumor-cluster-expressed variants
+         (``_scrna_peptide_emitter.emit_tumor_peptides``).
+      5. Build the user-facing note summarizing which signals fired.
+
+    The per-stage logic lives in private helper modules; this function
+    is the orchestration layer only.
+
     Parameters
     ----------
     variant_filter_top_fraction : float
@@ -425,168 +437,49 @@ def run_pipeline(
     variant_filter_min_score : float
         Minimum variant score (0–1) to keep. Default 0.0 (no filter).
     """
+    from ._scrna_filter import (
+        build_pipeline_notes,
+        build_tumor_marker_note,
+        filter_variants_with_lookups,
+    )
+    from ._scrna_peptide_emitter import emit_tumor_peptides
+
     cell_ids, gene_names, matrix = load_expression(expression_path)
     variants = load_variants(variants_path)
     proteins_detailed = load_protein_fasta_detailed(proteins_path)
     proteins = {gene: seq for gene, (_uid, seq) in proteins_detailed.items()}
-    uniprot_ids = {gene: uid for gene, (uid, _seq) in proteins_detailed.items() if uid}
+    uniprot_ids = {
+        gene: uid
+        for gene, (uid, _seq) in proteins_detailed.items()
+        if uid
+    }
 
-    # Snapshot original count before filtering.
+    # Snapshot count + DNA-coord flag BEFORE the filter block reassigns
+    # `variants` to the kept set.
     n_variants_input_orig = len(variants)
-
-    # Capture whether ANY of the original input variants carried DNA coords.
-    # This drives the AVI note in the user-facing report. We must capture
-    # this BEFORE the filter block reassigns `variants` to the kept set.
     had_dna_coords = any(v.chrom is not None for v in variants)
+    filter_active = (
+        variant_filter_top_fraction < 1.0 or variant_filter_min_score > 0.0
+    )
 
-    # Optional variant pre-filter (AlphaMissense-style, with AlphaMissense
-    # itself plugged in when the predictions TSV is available).
-    filtered_count = n_variants_input_orig
-    filter_scores: dict[str, float] = {}
-    am_lookup_fn = None
-    am_active = False
-    # Only attempt to load the real AlphaMissense index when filtering is
-    # requested AND the index is already cached. We don't trigger the
-    # 15-min build during a normal run because that's a heavy operation
-    # the user should initiate explicitly. Users with a pre-built cache
-    # (created via ``python -m mrnavax.alphamissense_integration``
-    # or a prior ``load_index()`` call) get the real scores automatically.
-    if variant_filter_top_fraction < 1.0 or variant_filter_min_score > 0.0:
-        try:
-            from .alphamissense_integration import (
-                CACHE_FILE,
-                load_index,
-                lookup,
-            )
+    # Stage 1+2: filter / per-variant scoring
+    variants, filter_scores, am_active = filter_variants_with_lookups(
+        variants,
+        top_fraction=variant_filter_top_fraction,
+        min_score=variant_filter_min_score,
+        proteins=proteins,
+        uniprot_ids=uniprot_ids,
+    )
+    filtered_count = len(variants)
 
-            if CACHE_FILE.exists():
-                load_index()
-                am_lookup_fn = lookup
-                am_active = True
-        except Exception:
-            am_lookup_fn = None
-
-    if variant_filter_top_fraction < 1.0 or variant_filter_min_score > 0.0:
-        from .variant_scorer import filter_variants
-
-        v_dicts = [
-            {
-                "gene": v.gene,
-                "position": v.position,
-                "wt_aa": v.wt_aa,
-                "mut_aa": v.mut_aa,
-                # DNA-level coordinates for AlphaGenome Atlas AVI lookup.
-                # Both AlphaMissense (coding) and AVI (regulatory) flow
-                # through the same score_variant() entry point now.
-                "chrom": v.chrom,
-                "ref_dna": v.ref_dna,
-                "alt_dna": v.alt_dna,
-            }
-            for v in variants
-        ]
-        # Build the AVI lookup. Use the stdlib mock by default (CI +
-        # offline use); users with ALPHAGENOME_API_KEY set + the
-        # [variant-alphagenome] extra installed get the real Atlas
-        # adapter. Selected at the backend-selector level, not here.
-        avi_lookup_fn = None
-        if any(v.chrom is not None for v in variants):
-            try:
-                from .alphagenome_integration import (
-                    select_regulatory_scorer,
-                )
-                avi_lookup_fn = select_regulatory_scorer().score_variant
-            except Exception:
-                avi_lookup_fn = None
-
-        # Build the conservation (PhyloP46way) lookup. Mock by default;
-        # users with the [variant-conservation] extra installed get the
-        # UCSC REST adapter. Selected at the backend-selector level.
-        conservation_lookup_fn = None
-        if any(v.chrom is not None for v in variants):
-            try:
-                from .conservation import select_conservation_lookup
-                conservation_lookup_fn = select_conservation_lookup().lookup
-            except Exception:
-                conservation_lookup_fn = None
-
-        scored = filter_variants(
-            v_dicts,
-            top_fraction=variant_filter_top_fraction,
-            min_score=variant_filter_min_score,
-            protein_lengths={g: len(p) for g, p in proteins.items()},
-            protein_sequences=proteins,
-            uniprot_ids=uniprot_ids,
-            am_lookup=am_lookup_fn,
-            avi_lookup=avi_lookup_fn,
-            conservation_lookup=conservation_lookup_fn,
-            strict=False,
-        )
-        keep_keys = {(s.gene, s.position, s.wt_aa, s.mut_aa) for s in scored}
-        variants = [v for v in variants if (v.gene, v.position, v.wt_aa, v.mut_aa) in keep_keys]
-        filtered_count = len(variants)
-        filter_scores = {
-            f"{s.gene}.{s.position}{s.wt_aa}>{s.mut_aa}": s.normalized_score for s in scored
-        }
-    elif any(v.chrom is not None for v in variants):
-        # No filter requested but variants carry DNA coordinates —
-        # still wire the AVI lookup and populate variant_scores so the
-        # user sees AVI for non-coding regulatory variants in the report.
-        from .alphagenome_integration import select_regulatory_scorer as _sel
-        from .conservation import select_conservation_lookup as _sel_cons
-        from .variant_scorer import score_variant as _score_one
-
-        _avi_lookup_fn = _sel().score_variant
-        _cons_lookup_fn = _sel_cons().lookup
-        for v in variants:
-            try:
-                _r = _score_one(
-                    gene=v.gene,
-                    position=v.position,
-                    wt_aa=v.wt_aa,
-                    mut_aa=v.mut_aa,
-                    chrom=v.chrom,
-                    ref_dna=v.ref_dna,
-                    alt_dna=v.alt_dna,
-                    protein_length=len(proteins.get(v.gene, "")) or None,
-                    uniprot_id=uniprot_ids.get(v.gene),
-                    am_lookup=am_lookup_fn,
-                    avi_lookup=_avi_lookup_fn,
-                    conservation_lookup=_cons_lookup_fn,
-                )
-            except Exception:
-                _r = None
-            if _r is not None:
-                filter_scores[
-                    f"{_r.gene}.{_r.position}{_r.wt_aa}>{_r.mut_aa}"
-                ] = _r.normalized_score
-
-    # Build the user-facing note: AM / AVI status + tumor-marker warning
-    notes: list[str] = []
-    if am_active:
-        notes.append("AlphaMissense pathogenicity scores used in variant filtering.")
-    elif variant_filter_top_fraction < 1.0 or variant_filter_min_score > 0.0:
-        notes.append(
-            "AlphaMissense predictions not found — heuristic BLOSUM62 + driver "
-            "gene + structural score used. To enable AlphaMissense, download "
-            "the predictions TSV from "
-            "https://storage.googleapis.com/dm_alphamissense/ "
-            "to ~/.cache/mrnavax/AlphaMissense_hg38.tsv "
-            "(licensed CC BY-NC-SA 4.0, non-commercial)."
-        )
-    # AVI note: mention if any variant carried DNA coordinates that
-    # were scored via the AlphaGenome Atlas lookup.
-    if had_dna_coords:
-        notes.append(
-            "AlphaGenome Atlas AVI scores used for non-coding regulatory "
-            "variants (Avsec et al. Nature 2026). Coding-region variants "
-            "are still scored by AlphaMissense (when available)."
-        )
-
+    # Stage 3: clustering + tumor-cluster identification
     labels, cluster_names = cluster_with_scanpy(matrix, cell_ids, gene_names, seed=42)
     labels = [int(x) for x in labels]  # numpy strings or ints → uniform Python ints
-
-    # Marker score = mean expression of tumor markers per cluster
-    marker_idx = [gene_names.index(g) for g in (tumor_marker_genes or []) if g in gene_names]
+    marker_idx = [
+        gene_names.index(g)
+        for g in (tumor_marker_genes or [])
+        if g in gene_names
+    ]
     cluster_scores: dict[int, float] = {}
     for c in set(labels):
         cells = [matrix[i] for i, lbl in enumerate(labels) if lbl == c]
@@ -596,40 +489,38 @@ def run_pipeline(
             ) / len(cells)
         else:
             cluster_scores[c] = float(len(cells))
-    tumor_cluster = max(cluster_scores, key=lambda k: cluster_scores[k]) if cluster_scores else 0
+    tumor_cluster = (
+        max(cluster_scores, key=lambda k: cluster_scores[k])
+        if cluster_scores
+        else 0
+    )
 
-    # Build peptide candidates for tumor-cluster-expressed variants
+    # Stage 4: peptide candidates for tumor-cluster-expressed variants
     gene_expr_by_cluster = _gene_means_per_cluster(matrix, labels, gene_names)
     tumor_expressed_genes = {
-        g for g, v in gene_expr_by_cluster.get(tumor_cluster, {}).items() if v > 0.5
+        g
+        for g, v in gene_expr_by_cluster.get(tumor_cluster, {}).items()
+        if v > 0.5
     }
+    peptides = emit_tumor_peptides(
+        variants=variants,
+        proteins=proteins,
+        tumor_cluster=tumor_cluster,
+        tumor_expressed_genes=tumor_expressed_genes,
+        cluster_marker_score=cluster_scores.get(tumor_cluster, 0.0),
+        peptide_lengths=peptide_lengths,
+    )
 
-    peptides: list[TumorPeptide] = []
-    for v in variants:
-        if v.gene not in proteins:
-            continue
-        if v.gene not in tumor_expressed_genes:
-            continue
-        for pep in mutant_peptides(proteins[v.gene], v.position, v.mut_aa, lengths=peptide_lengths):
-            peptides.append(
-                TumorPeptide(
-                    cell_cluster=tumor_cluster,
-                    gene=v.gene,
-                    position=v.position,
-                    wt_aa=v.wt_aa,
-                    mut_aa=v.mut_aa,
-                    peptide=pep,
-                    length=len(pep),
-                    cluster_marker_score=cluster_scores.get(tumor_cluster, 0.0),
-                )
-            )
-    if not marker_idx:
-        notes.append(
-            "WARNING: no tumor-marker genes supplied; the largest cluster was "
-            "assumed to be tumor. Pass --tumor-markers GENE1,GENE2 for "
-            "accurate selection. The downstream peptide list may contain "
-            "many false positives."
-        )
+    # Stage 5: build the user-facing note
+    notes: list[str] = []
+    base_note = build_pipeline_notes(
+        am_active=am_active,
+        filter_active=filter_active,
+        had_dna_coords=had_dna_coords,
+    )
+    if base_note:
+        notes.append(base_note)
+    build_tumor_marker_note(marker_idx, notes)
     note = " | ".join(notes)
 
     return PipelineReport(

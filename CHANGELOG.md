@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-09-18
+
+### Changed
+
+- **Internal refactor**: ``mrnavax/sc_rna_pipeline.py`` is now 630
+  lines (was 739) — ``run_pipeline`` is split into two private
+  helper modules:
+    - ``mrnavax/_scrna_filter.py`` — ``filter_variants_with_lookups``,
+      ``build_pipeline_notes``, ``build_tumor_marker_note``. Owns
+      the lookup-wiring + filter call + per-variant scoring fallback
+      + user-facing notes construction.
+    - ``mrnavax/_scrna_peptide_emitter.py`` —
+      ``emit_tumor_peptides``. Walks the filtered variants and
+      emits mutant-peptide candidates for those that are both
+      tumor-cluster-expressed and have a known protein sequence.
+- **run_pipeline body reduced** to ~75 lines of orchestration:
+  load inputs → filter / per-variant scoring → cluster → identify
+  tumor cluster → emit peptides → build note → return.
+- **No public API change** — ``run_pipeline`` + ``PipelineReport``
+  + every CLI subcommand + every existing test still passes
+  unchanged.
+
+### New private helpers (underscore-prefixed)
+
+- ``mrnavax/_scrna_filter.py``:
+  ``filter_variants_with_lookups(variants, *, top_fraction,
+  min_score, proteins, uniprot_ids)`` returns
+  ``(kept, scores, am_active)``. Wires the optional AlphaMissense /
+  AVI / PhyloP lookups transparently and either filters the variants
+  or falls through to per-variant scoring when filtering is
+  disabled but DNA coords are present.
+  ``build_pipeline_notes(*, am_active, filter_active,
+  had_dna_coords)`` returns the user-facing ``note`` string.
+  ``build_tumor_marker_note(marker_idx, notes)`` appends the
+  tumor-marker warning.
+- ``mrnavax/_scrna_peptide_emitter.py``:
+  ``emit_tumor_peptides(variants, proteins, tumor_cluster,
+  tumor_expressed_genes, cluster_marker_score, peptide_lengths)``
+  returns the list of ``TumorPeptide`` objects.
+
+### New tests
+
+- ``tests/test_scrna_refactor.py`` (14 tests):
+    - ``TestEmitTumorPeptides`` — empty variants / missing protein /
+      not tumor-expressed / real tumor-expressed case
+    - ``TestBuildPipelineNotes`` — AM active / AM fallback / DNA
+      coords on/off / all-off empty
+    - ``TestBuildTumorMarkerNote`` — no-markers appends warning /
+      markers present leaves notes unchanged
+    - ``TestFilterVariantsWithLookupsNoFilter`` — passthrough
+    - ``TestFilterVariantsWithLookupsFilterActive`` — kept set
+      reduces correctly + scores dict aligned
+
+### Why this matters
+
+The variant-filter / scoring loop / peptide-emitter / notes
+construction was previously crammed into one ~250-line block inside
+``run_pipeline``. Splitting it into focused helpers:
+  * The filter + scoring logic is now unit-testable in isolation
+    — the new tests prove ``filter_variants_with_lookups`` works
+    end-to-end without spinning up the full pipeline (no expression
+    matrix needed).
+  * The peptide-emitter is reusable from any future code path that
+    wants to enumerate mutant peptides for a list of variants
+    (e.g. a batch-pipeline mode for therapeutic prioritization).
+  * The notes builder is independently testable — 6 of the new
+    tests pin its behavior across all combinations of AM / AVI /
+    DNA-coords / tumor-marker signals.
+
 ## [0.22.0] - 2026-09-18
 
 ### Changed
