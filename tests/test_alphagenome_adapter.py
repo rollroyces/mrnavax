@@ -215,11 +215,19 @@ class TestBackendCheckRegistered(unittest.TestCase):
     def test_check_present_in_backends_module(self):
         from mrnavax import backends
 
-        # backends.py exposes a public CHECKS list; verify our new check is there.
-        src = Path(backends.__file__).read_text()
-        self.assertIn('"variant.alphagenome_atlas"', src)
+        # backends.py exposes a public CHECKS list; verify our new
+        # check is registered. After the v0.24.0 family-split refactor,
+        # the check lives in mrnavax/_backends_variant.py but registers
+        # itself with backends.CHECKS via the @register decorator.
         names = [n for n, _ in backends.CHECKS]
         self.assertIn("variant.alphagenome_atlas", names)
+        # Also confirm the name appears in one of the family modules
+        # (proves the check is actually defined somewhere reachable
+        # from backends, not just the registry).
+        family_src = (
+            Path(backends.__file__).parent / "_backends_variant.py"
+        ).read_text()
+        self.assertIn('"variant.alphagenome_atlas"', family_src)
 
     def test_check_passes_under_mock(self):
         """When MRNA_AI_FORCE_MOCK=1 (or no key is present), the check

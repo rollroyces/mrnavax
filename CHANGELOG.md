@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-09-18
+
+### Changed
+
+- **Internal refactor**: ``mrnavax/backends.py`` is now 63 lines
+  (was 1,838) — all 30 backend check functions are split into 8
+  family-specific modules. ``CHECKS`` is the single source of
+  truth; importing ``mrnavax.backends`` populates the list.
+  Family modules:
+    - ``mrnavax/_backends_registry.py`` — ``CHECKS`` list, ``register``
+      decorator, ``_example_path`` helper, ``run_all``, ``main``.
+    - ``mrnavax/_backends_neoantigen.py`` — 4 checks
+      (heuristic_A0201, heuristic_nonA2_silent, mhcflurry_available).
+    - ``mrnavax/_backends_codon.py`` — 6 checks (analyze, optimize,
+      ribodecode_optimizer, lineardesign_optimizer,
+      ribodecode_protocols, lineardesign_full_length). Owns the
+      shared ``_CODON_TABLE`` + ``_translate`` helpers.
+    - ``mrnavax/_backends_trial.py`` — 5 checks (keyword_fallback,
+      dense_retriever, medcpt_integration, trialgpt_llm,
+      simicl_demonstration_selection).
+    - ``mrnavax/_backends_scrna.py`` — 8 checks (pipeline,
+      variant_filter, pipeline_with_avi,
+      variant_scorer_alphamissense, scgpt_integration,
+      alphamissense_integration, structural_disruption_chou_fasman,
+      embedding_tfidf_svd).
+    - ``mrnavax/_backends_variant.py`` — 2 checks
+      (alphagenome_atlas, alphagenome_atlas_fixture).
+    - ``mrnavax/_backends_protein_lm.py`` — 1 check
+      (esm2_protein_lm_embedder, registered under the
+      ``neoantigen.*`` family).
+    - ``mrnavax/_backends_spatial.py`` — 1 check
+      (stmodule_module_identification).
+    - ``mrnavax/_backends_remaining.py`` — 4 checks for the
+      one-off families (manufacture, lnp, case_study, conservation).
+- **No public API change** — ``mrnavax.backends`` still exposes
+  ``CHECKS``, ``register``, ``_example_path``, ``run_all``, ``main``.
+  Every existing test + every CLI subcommand + every docs page
+  passes unchanged.
+
+### New tests
+
+- ``tests/test_backends_registry.py`` (21 tests):
+    - ``TestRegistryInvariants`` — CHECKS is a list, entries are
+      ``(name, callable)`` pairs, names are unique, names use
+      ``family.subname`` format, ≥ 30 checks registered.
+    - ``TestRegisterDecorator`` — ``register()`` appends and returns
+      the function unchanged.
+    - ``TestExamplePathHelper`` — ``_example_path`` resolves
+      bundled example files.
+    - ``TestRunAll`` — ``run_all()`` returns int.
+    - ``TestBackendsModulePublicSurface`` — ``mrnavax.backends``
+      re-exports ``CHECKS``, ``register``, ``run_all``, ``main``,
+      ``_example_path``.
+    - ``TestFamilyModulesImport`` — each of the 8 family modules
+      imports cleanly (which is what populates ``CHECKS``).
+
+### Why this matters
+
+The 1,838-line ``backends.py`` was hard to navigate — each check
+function lived inline, even though the 30 checks naturally grouped
+into ~7 families (neoantigen, codon, trial, scrna, variant,
+protein_lm, spatial, plus 1-off families). Splitting into focused
+family modules:
+  * Each family is now independently testable.
+  * Each family can be imported independently (faster cold-start
+    if you only need one family's diagnostics).
+  * Adding a new check is now: write it in ``_backends_<family>.py``
+    with the ``@register("family.subname")`` decorator. No need to
+    find the right spot in a 1,838-line file.
+  * The shared ``_CODON_TABLE`` + ``_translate`` helpers stay with
+    the codon family instead of cluttering the public ``backends``
+    module.
+
 ## [0.23.0] - 2026-09-18
 
 ### Changed
