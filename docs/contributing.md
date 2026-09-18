@@ -79,3 +79,36 @@ Every new tool should ship with:
 6. Tests in `tests/` following strict TDD.
 7. A `docs/tools/<name>.{md,zh-Hant.md,zh-Hans.md}` page describing
    the tool, CLI usage, backend matrix, and reference paper.
+
+## Refreshing the recorded Atlas fixture
+
+The bundled fixture at
+`tests/fixtures/alphagenome_atlas_sample.json` locks the parser
+shape against upstream changes. To refresh it with a real captured
+response (once you have an `ALPHAGENOME_API_KEY`):
+
+```bash
+# 1. Export your API key (https://deepmind.google.com/science/alphagenome)
+export ALPHAGENOME_API_KEY=***
+
+# 2. Trigger the GitHub Actions workflow manually:
+#    Actions → Atlas live integration → Run workflow
+#    Inputs: mode=record, leave baseline/tolerance as default
+#    This runs the real Atlas call and commits the response as
+#    tests/fixtures/alphagenome_atlas_live_<timestamp>.json.
+#
+# 3. Review the PR, copy the captured response over the bundled
+#    fixture (or commit alongside), and update the expected-score
+#    assertions in any integration tests.
+#
+# 4. Locally you can also do:
+python -m mrnavax.live_atlas_integration --mode record \
+    --output tests/fixtures/alphagenome_atlas_live.json
+```
+
+The weekly cron (`.github/workflows/atlas_integration.yml`) runs
+the same harness in `--mode regression` and compares the live
+score against a baseline with ±5% tolerance — failing the workflow
+if the score drifts outside tolerance. This catches upstream Atlas
+API breakage in real time (the recorded fixture catches it with
+a 7-day lag).

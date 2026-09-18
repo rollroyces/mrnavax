@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-09-17
+
+### Added
+
+- **Scheduled live AlphaGenome Atlas integration harness**
+  (`mrnavax/live_atlas_integration.py`) that calls the real Atlas
+  API and compares against a baseline with ±5% tolerance. Three modes:
+    - `mock` — uses the stdlib mock; always passes; no network.
+      Used in unit tests + offline CI.
+    - `record` — calls the real Atlas; writes the response to a
+      JSON file. Triggered manually when refreshing fixtures.
+    - `regression` — calls the real Atlas; compares against a
+      baseline score with ±5% tolerance. Triggered weekly via the
+      new GitHub Actions cron.
+- **New GitHub Actions workflow `.github/workflows/atlas_integration.yml`**
+  scheduled for every Monday at 06:00 UTC. Uses Node 24-native
+  action majors (consistent with the rest of the project's
+  workflows). Manual `workflow_dispatch` for record mode. Skips the
+  live call gracefully when `ALPHAGENOME_API_KEY` is unset
+  (the harness still runs in mock mode as a smoke test).
+- **CLI**: `python -m mrnavax.live_atlas_integration --mode {mock,
+  record, regression} [--baseline 0.72 --tolerance 0.05 --output PATH]`.
+  Exit codes: 0 on pass, 1 on regression failure, 2 on missing API
+  key (for record / regression modes).
+- **10 new unit tests** in `tests/test_live_atlas_integration.py`
+  covering mock / record / regression modes, baseline comparison
+  with tolerance, and CLI integration.
+- **`docs/contributing.md` (3 locales)**: new section
+  "Refreshing the recorded Atlas fixture" documenting the workflow
+  + manual record procedure.
+- Total tests: **249** (was 239). Total backend checks: **30**
+  (unchanged — the live integration is a workflow, not a CI check).
+
+### Why this matters
+
+Closes the last remaining item on the roadmap. The recorded fixture
+in v0.18.0 catches upstream Atlas API schema changes with a 7-day
+lag (since it's only refreshed when the bundle is updated). The
+weekly cron catches the same changes in real time. Manual record
+mode lets contributors refresh the fixture themselves in 30
+seconds with `python -m mrnavax.live_atlas_integration --mode
+record`.
+
+### Setup
+
+To enable the live integration:
+
+1. Get an API key at <https://deepmind.google.com/science/alphagenome>
+   (non-commercial preview; free for academic users).
+2. Add it as a GitHub Actions secret:
+   <https://github.com/rollroyces/mrnavax/settings/secrets/actions/new>
+   - Name: `ALPHAGENOME_API_KEY`
+   - Value: your key
+
+The workflow is dormant without the secret (mock mode runs as a
+smoke check). Add the secret + wait for the next Monday 06:00 UTC,
+or trigger manually via `Actions → Atlas live integration → Run
+workflow`.
+
 ## [0.20.0] - 2026-09-17
 
 ### Added

@@ -1,0 +1,87 @@
+# Scheduled live AlphaGenome Atlas integration check.
+#
+# Runs weekly (Mondays 06:00 UTC) against the real AlphaGenome Atlas
+# API to catch upstream breakage in real time. The v0.18.0 recorded
+# fixture catches the same breakage with a 7-day lag.
+#
+# Required GitHub Actions secret: ALPHAGENOME_API_KEY
+# (https://deepmind.google.com/science/alphagenome — non-commercial
+# preview; free for academic users).
+#
+# Manual trigger: workflow_dispatch with mode=record|regression
+# lets you refresh the recorded fixture or run a regression check
+# on demand without waiting for the cron.
+name: Atlas live integration
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC. Off-peak; Atlas API has more capacity.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Harness mode (record / regression)"
+        required: true
+        default: regression
+        type: choice
+        options:
+          - regression
+          - record
+      baseline:
+        description: "Baseline AVI score (regression mode)"
+        required: false
+        default: "0.72"
+        type: string
+      tolerance:
+        description: "Maximum absolute delta tolerated"
+        required: false
+        default: "0.05"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  atlas-live-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install mrnavax
+        run: pip install -e .
+
+      - name: Run mock-mode smoke
+        # Always pass: confirms the harness CLI works end-to-end before
+        # we attempt the live Atlas call. Surfaces harness bugs in CI
+        # without spending API quota.
+        run: |
+          python -m mrnavax.live_atlas_integration --mode mock
+
+      - name: Run live Atlas integration
+        if: env.ALPHAGENOME_API_KEY != ''
+        env:
+          ALPHAGENOME_API_KEY: ${{ secrets.ALPHAGENOME_API_KEY }}
+        run: |
+          # mode=regression (default) compares against --baseline
+          # with --tolerance. mode=record writes the response to
+          # tests/fixtures/ for review.
+          MODE="${{ github.event.inputs.mode || 'regression' }}"
+          BASELINE="${{ github.event.inputs.baseline || '0.72' }}"
+          TOLERANCE="${{ github.event.inputs.tolerance || '0.05' }}"
+          ARGS="--mode ${MODE} --baseline ${BASELINE} --tolerance ${TOLERANCE}"
+          if [ "${MODE}" = "record" ]; then
+            ARGS="${ARGS} --output tests/fixtures/alphagenome_atlas_live.json"
+          fi
+          python -m mrnavax.live_atlas_integration ${ARGS}
+
+      - name: Skip notice when ALPHAGENOME_API_KEY is not set
+        if: env.ALPHAGENOME_API_KEY == ''
+        run: |
+          echo "::notice::ALPHAGENOME_API_KEY not configured; skipping live Atlas check. Add the secret at https://github.com/${{ github.repository }}/settings/secrets/actions to enable weekly real-Atlas regression coverage."

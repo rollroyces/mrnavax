@@ -74,3 +74,32 @@ mkdocs serve
 6. `tests/` 中遵循严格 TDD 的测试。
 7. 一份 `docs/tools/<name>.{md,zh-Hant.md,zh-Hans.md}` 页面，描述
    工具、CLI 用法、后端矩阵与参考论文。
+
+## 重新整理记录的 Atlas fixture
+
+套件中的 fixture 位于 `tests/fixtures/alphagenome_atlas_sample.json`，
+会锁定解析器形状以防上游变更。若要使用真实撷取响应重新整理（取得
+`ALPHAGENOME_API_KEY` 后）：
+
+```bash
+# 1. 导出您的 API 密钥（https://deepmind.google.com/science/alphagenome）
+export ALPHAGENOME_API_KEY=***
+
+# 2. 手动触发 GitHub Actions 工作流程：
+#    Actions → Atlas live integration → Run workflow
+#    Inputs: mode=record, leave baseline/tolerance as default
+#    这会执行真实的 Atlas 调用并将响应提交为
+#    tests/fixtures/alphagenome_atlas_live_<timestamp>.json。
+#
+# 3. 审阅 PR，将撷取响应复制到套件 fixture（或一并提交），并更新
+#    任何整合测试中的预期评分断言。
+#
+# 4. 本机也可以执行：
+python -m mrnavax.live_atlas_integration --mode record \
+    --output tests/fixtures/alphagenome_atlas_live.json
+```
+
+每周排程（`.github/workflows/atlas_integration.yml`）以 `--mode regression`
+执行同一个测试工具，并以 ±5% 容差将实时评分与基准比较——当评分
+漂移超出容差时工作流程会失败。这能即时抓到上游 Atlas API 的损坏
+（记录的 fixture 则会有 7 天的延迟）。
