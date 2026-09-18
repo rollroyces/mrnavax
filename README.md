@@ -1,8 +1,8 @@
 # mrnavax
 
 > Practical Python tools for the AI-leverage layers in mRNA cancer therapy.
-> Stdlib-only core, eight runnable tools, nine real-model adapters behind
-> Protocol contracts, three documentation locales, 249 tests, 30 backend
+> Stdlib-only core, eight runnable tools, ten real-model adapters behind
+> Protocol contracts, three documentation locales, 284 tests, 30 backend
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
@@ -16,7 +16,7 @@
 
 ## What this is
 
-Seven small, runnable tools that map 1-to-1 onto the published AI leverage
+Eight small, runnable tools that map 1-to-1 onto the published AI leverage
 points in mRNA cancer therapeutics — plus a typed integration contract for
 every published foundation model in the field. Each tool runs as a CLI
 subcommand and imports cleanly as a Python module.
@@ -60,7 +60,7 @@ flowchart LR
     TRIAL -.eligibility.-> PT
 ```
 
-## The seven tools
+## The eight tools
 
 | Tool | What it does | AI leverage layer | Reference work integrated |
 |---|---|---|---|
@@ -310,15 +310,15 @@ contract with a stdlib-only mock fallback.
 ```mermaid
 flowchart TB
     subgraph USER["User interface"]
-        CLI["mrnavax CLI<br/>(7 subcommands)"]
+        CLI["mrnavax CLI<br/>(8 subcommands)"]
         PY["import mrnavax<br/>as Python module"]
     end
 
     subgraph CORE["Core layer (stdlib only, ships in pip wheel)"]
         direction TB
-        TOOLS["Typed dataclass tools<br/>codon / neoantigen / trial<br/>scrna / spatial / manufacture / lnp"]
-        SELECT["Backend selector<br/>backends.py"]
-        CK["25 backend integrity checks<br/>(deterministic structural)"]
+        TOOLS["Typed dataclass tools<br/>codon / neoantigen / trial<br/>scrna / spatial / manufacture / lnp<br/>variant-regulatory"]
+        SELECT["Backend selector<br/>_backends_registry + 8 family modules"]
+        CK["30 backend integrity checks<br/>(deterministic structural)"]
     end
 
     subgraph PROTOCOL["typing.Protocol contracts (4 actually defined)"]
@@ -377,8 +377,8 @@ flowchart TB
 
 **Note:** the `neoantigen`, `trial`, `scrna`, `manufacture`, and `lnp`
 tools expose module-level functions rather than a `Protocol` class, so
-they are wired through `backends.py`'s `@register(name)` decorators and
-verified by the same 25 structural integrity checks. The Protocol
+they are wired through `_backends_registry.register(name)` decorators
+and verified by the same 30 structural integrity checks. The Protocol
 contract pattern is applied where multiple interchangeable
 implementations exist (codon optimizers, protein-LM embedders,
 spatial-module finders).
@@ -409,7 +409,7 @@ tumor cluster identification → mutant peptide enumeration → ESM2
 immunogenicity scoring → mRNA cancer vaccine design. See
 `docs/tools/scrna.md` for the full walkthrough.
 
-## Why seven layers (and not four or five)?
+## Why eight layers (and not four or five)?
 
 The mRNA cancer therapy research has reached an inflection point where
 foundation models for **sequence design**, **variant prioritization**,
@@ -460,7 +460,7 @@ mkdocs serve
 
 ```mermaid
 flowchart LR
-    DEV["git push<br/>to main"] --> SMOKE["smoke.yml<br/>Python 3.11–3.14<br/>174 tests + 25 checks"]
+    DEV["git push<br/>to main"] --> SMOKE["smoke.yml<br/>Python 3.11–3.14<br/>284 tests + 30 checks"]
     DEV --> DOCS["docs.yml<br/>mkdocs strict<br/>3 locales"]
     SMOKE -.on failure.-> FAIL["❌ red ✋<br/>fix + push again"]
     DOCS -.on failure.-> FAIL
@@ -481,8 +481,12 @@ flowchart LR
 ```
 
 All three workflows use Node 24-native action majors
-(`actions/checkout@v6`, `actions/setup-python@v7`, etc.) — zero
-deprecation warnings on the latest runs.
+(`actions/checkout@v6`, `actions/setup-python@v6`, etc.) — zero
+deprecation warnings on the latest runs. The toolkit also ships a
+fourth workflow, `.github/workflows/atlas_integration.yml`, that
+runs weekly (Mondays 06:00 UTC) against the real AlphaGenome Atlas
+API to catch upstream breakage; it stays dormant (mock mode) until
+the `ALPHAGENOME_API_KEY` GitHub secret is configured.
 
 ## License
 
@@ -504,5 +508,25 @@ Every new tool should ship with:
 2. A `runtime_checkable` Protocol for the backend interface.
 3. A real adapter that shells out / lazy-loads the upstream model.
 4. A stdlib-only mock that satisfies the same Protocol.
-5. A `register()` entry in `backends.py` for CI integrity.
+5. A `@register("family.subname")` entry in the appropriate
+   `mrnavax/_backends_<family>.py` module (or in a new family module
+   if the check does not fit an existing family — add it to the import
+   block at the top of `mrnavax/backends.py`). The 30-check
+   integrity registry lives in `mrnavax/_backends_registry.py`.
 6. Tests in `tests/` following strict TDD.
+
+Helper-module pattern (v0.22.0+): when a public module's orchestration
+function is doing too much (e.g. `run_pipeline` had a 245-line filter
++ scoring + peptide-emit + notes block), extract focused helpers into
+underscore-prefixed private modules:
+
+- `mrnavax/_scoring_components.py` + `mrnavax/_scoring_lookups.py`
+  own the per-component logic behind `score_variant`.
+- `mrnavax/_scrna_filter.py` + `mrnavax/_scrna_peptide_emitter.py`
+  own the filter + peptide emission behind `run_pipeline`.
+- `mrnavax/_backends_<family>.py` owns the check functions behind
+  `backends.CHECKS`.
+
+New helpers should land in similarly-named underscore-prefixed
+modules with tests that prove the helpers are usable in isolation
+from the public orchestration function.

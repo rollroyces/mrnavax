@@ -1,8 +1,8 @@
 # mrnavax
 
 > mRNA 癌症治疗中 AI 加杠杆层的实用 Python 工具。
-> 纯标准库核心，八个可执行工具，九个真实模型适配器置于
-> Protocol 契约之后，三份文档语种，249 个测试，30 项后端完整性检查。
+> 纯标准库核心，八个可执行工具，十个真实模型适配器置于
+> Protocol 契约之后，三份文档语种，284 个测试，30 项后端完整性检查。
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
 [![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.24.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
@@ -15,7 +15,7 @@
 
 ## 这是什么
 
-七个小巧、可执行的工具，一对一对应于 mRNA 癌症治疗中已发表的
+八个小巧、可执行的工具，一对一对应于 mRNA 癌症治疗中已发表的
 AI 加杠杆点——加上每个已发表基础模型的类型化整合契约。每个工具可作为
 CLI 子命令执行，也可干净地作为 Python 模块导入。
 
@@ -58,7 +58,7 @@ flowchart LR
     TRIAL -.资格.-> PT
 ```
 
-## 七个工具
+## 八个工具
 
 | Tool | 工具功能 | AI 加杠杆层 | 整合的参考工作 |
 |---|---|---|---|
@@ -308,7 +308,7 @@ mrnavax scrna \
 ESM2 免疫原性评分 → mRNA 癌症疫苗设计。完整演示请见
 `docs/tools/scrna.md`。
 
-## 为何是七层（而非四或五）？
+## 为何是八层（而非四或五）？
 
 mRNA 癌症治疗研究正处于一个转折点：**序列设计**、**变异优先排序**、
 **新抗原预测**、**单细胞基础**、**空间转录组学**、**患者-试验配对**
