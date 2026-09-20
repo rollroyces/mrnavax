@@ -132,6 +132,10 @@ nav:
   - Contributing: contributing.md
   - Changelog: changelog.md
   - License: license.md
+# Note: docs/contributing/considerations/ is NOT in nav — it's a
+# historical record of features we spiked but intentionally didn't
+# ship. See "Considered but not built" section in CONTRIBUTING for
+# the index. Excluding from nav keeps the live page tree clean.
 extra:
   social:
     - icon: fontawesome/brands/github

@@ -13,3 +13,4 @@ outputs/*.txt
 
 # macOS Finder metadata
 .DS_Store
+.considerations/
