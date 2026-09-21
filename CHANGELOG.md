@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.2] - 2026-09-21
+
+### Fixed
+
+- **``select_conservation_lookup`` always returned the mock** in
+  ``mrnavax/conservation.py:149-156``. The selector's docstring
+  promised "When a real adapter is added, this selector will auto-pick
+  it" but the selector unconditionally returned
+  ``MockPhyloPLookup()`` even though ``PhyloPRestAdapter`` (a fully
+  implemented urllib-based UCSC client) is defined right above it.
+  The result: the 4-signal composition story (BLOSUM62 + driver +
+  structural + AM → AVI → PhyloP) was actually only ever 3-signal
+  in production. The ``_scrna_filter`` pipeline calls this selector,
+  so every scrna run silently dropped the PhyloP signal.
+
+  Now prefers the real UCSC adapter by default (the UCSC endpoint
+  is public, requires no API key, and silently returns 0.0 on
+  network errors so it's safe to use in any environment).
+  ``MRNA_AI_FORCE_MOCK=1`` keeps the mock for offline / CI use,
+  matching the existing AlphaGenome + AlphaMissense mock-control
+  pattern.
+
+  (`mrnavax/conservation.py`)
+
+### Performance
+
+- **Hoisted ``DRIVER_GENES`` import to module level** in
+  ``mrnavax/_scoring_components.py``. Previously
+  ``compute_local_components`` did
+  ``from .variant_scorer import DRIVER_GENES`` on every call. With
+  the import at module top alongside the existing
+  ``BLOSUM62`` / ``HYDROPHOBICITY`` imports, the per-call
+  Python-level module-attribute lookup is gone.
+  Bench: 10000 calls = 8.3 ms (0.83 μs/call), identical scores
+  across runs. (`mrnavax/_scoring_components.py`)
+
+### Why this matters
+
+The PhyloP selector fix makes the 4-signal story real — researchers
+running ``mrnavax scrna`` will now actually get PhyloP conservation
+credit in their variant scoring (network permitting). The
+``DRIVER_GENES`` hoist makes ``compute_local_components`` measurably
+faster on the inner loop of ``score_variant``.
+
+Both fixes are behavior-preserving for users who set
+``MRNA_AI_FORCE_MOCK=1`` (CI / offline mode). Users with network
+access now get the real PhyloP signal by default.
+
 ## [0.24.1] - 2026-09-18
 
 ### Fixed

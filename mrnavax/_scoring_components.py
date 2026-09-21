@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .variant_scorer import BLOSUM62, HYDROPHOBICITY
+from .variant_scorer import BLOSUM62, DRIVER_GENES, HYDROPHOBICITY
 
 # ---------------------------------------------------------------------------
 # Local (no-upstream) components
@@ -83,8 +83,6 @@ def compute_local_components(
     Chou-Fasman structural-disruption component is computed only
     when ``protein_sequence`` is supplied.
     """
-    from .variant_scorer import DRIVER_GENES
-
     driver = driver_genes if driver_genes is not None else DRIVER_GENES
 
     # 1. Substitution severity (BLOSUM62). Low BLOSUM = high priority.

@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -149,11 +150,18 @@ class PhyloPRestAdapter:
 def select_conservation_lookup() -> ConservationLookup:
     """Select the best available conservation backend.
 
-    Currently only the mock is bundled (the real UCSC adapter is
-    trivial to swap in via ``--conservation-backend``). When a real
-    adapter is added, this selector will auto-pick it.
+    Selection order:
+      1. If ``MRNA_AI_FORCE_MOCK`` is set, return the mock (offline / CI).
+      2. Otherwise return the real UCSC PhyloPRestAdapter (the UCSC
+         46-way placental alignment endpoint is public and requires
+         no API key). The adapter silently returns 0.0 on network
+         errors, so it's safe to use in any environment.
+      3. (Reserved) If a future local-cache adapter is added, prefer
+         that here before falling back to UCSC.
     """
-    return MockPhyloPLookup()
+    if os.environ.get("MRNA_AI_FORCE_MOCK"):
+        return MockPhyloPLookup()
+    return PhyloPRestAdapter()
 
 
 __all__ = [
