@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.3] - 2026-09-21
+
+### Tests
+
+- **Added ``tests/test_conservation_selector.py``** (5 tests, 100 lines)
+  to pin the v0.24.2 ``select_conservation_lookup`` contract.
+  Without these tests, the v0.24.2 bug ("the selector always returned
+  mock, the docstring lied") could regress silently — no test was
+  exercising the selector's MRNA_AI_FORCE_MOCK branching before.
+  The new tests cover:
+    - ``select_conservation_lookup`` returns ``PhyloPRestAdapter``
+      when ``MRNA_AI_FORCE_MOCK`` is unset (the production contract).
+    - ``select_conservation_lookup`` returns ``MockPhyloPLookup``
+      when ``MRNA_AI_FORCE_MOCK=1`` (the CI / offline contract).
+    - The real adapter silently returns a float in [-1, 1] on
+      network/parse failure (never raises — the silent-fail
+      contract).
+    - The real adapter returns 0.0 for an invalid chromosome
+      (defensive default).
+    - The 4-signal composition (BLOSUM62 + driver + structural +
+      AM → AVI → PhyloP) records ``phylop46way_score`` in
+      ``score_variant.components`` — the user-visible contract
+      that the v0.24.2 fix made real.
+
+### Why this matters
+
+A bug fix without a regression test is fragile. The v0.24.2 fix
+correctly swapped ``MockPhyloPLookup()`` for the real UCSC
+``PhyloPRestAdapter``, but nothing in the test suite exercised
+the selector's branching on ``MRNA_AI_FORCE_MOCK``. A future
+contributor could revert the selector to the unconditional-mock
+pattern and no test would go red. These 5 tests lock in the
+contract so the v0.24.2 bug cannot regress.
+
 ## [0.24.2] - 2026-09-21
 
 ### Fixed
