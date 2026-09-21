@@ -304,6 +304,4 @@ def _check_lineardesign_full_length() -> tuple[bool, str]:
     )
 
 
-# _example_path is re-exported so check functions can still find it
-# if imported via ``from ._backends_codon import _example_path``.
-__all__ = ["_CODON_TABLE", "_translate"]
+__all__ = []

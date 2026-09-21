@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.1] - 2026-09-18
+
+### Fixed
+
+- **PhyloP46way conservation weighting inconsistency** in
+  ``score_variant``. The AVI-dominant branch used a hard
+  ``cons.score > 0.3`` threshold (PhyloP below 0.3 → zero conservation
+  bonus); the AM-dominant and no-dominant branches used a gradient
+  ``0.10 * cons.score if cons.score > 0`` (any positive PhyloP
+  contributed). The result was that AVI-dominant variants with
+  PhyloP=0.2 received zero conservation credit while AM-dominant
+  variants with the same PhyloP received 0.02 credit — inconsistent
+  scoring for the same conservation signal. Unified all three
+  branches to use the gradient formula.
+  Also extracted the duplicated weighted-local-component sum into
+  ``local_weighted`` to eliminate the 30-character repeated block.
+  (`mrnavax/variant_scorer.py:_combine_components`)
+
+- **Dead imports + AI-slop trailing assignments** in
+  ``mrnavax/_backends_scrna.py``. Removed unused
+  ``tempfile`` / ``pathlib`` imports plus the
+  ``_ = Path; _ = tempfile`` no-op assignments that were left over
+  from the v0.24.0 family split. Also replaced defensive
+  ``_csv`` / ``_tempfile`` / ``_Path`` local aliases inside
+  ``_check_scrna_pipeline_with_avi`` with the canonical module-level
+  imports.
+
+- **Dead parameter** ``filter_has_dna_coords: bool = False`` on
+  ``build_pipeline_notes`` (in ``mrnavax/_scrna_filter.py``). The
+  parameter was never passed by the only caller and the body never
+  referenced it. Removed.
+
+- **``len(...) or None`` hack** in
+  ``mrnavax/_scrna_filter.py:_score_one_each``. Replaced with
+  ``len(proteins[v.gene]) if v.gene in proteins else None`` — same
+  semantics, but the ``len("") or None`` pattern (which relied on
+  ``0 or None == None``) is no longer needed.
+
+- **Dead ``__all__`` exports** in ``mrnavax/_backends_codon.py``.
+  ``__all__`` listed ``["_CODON_TABLE", "_translate"]`` but neither
+  was imported by any other module. Replaced with ``__all__ = []``.
+
+### Performance
+
+- **``predict_secondary_structure`` memoized via functools.lru_cache**
+  (``maxsize=1024``). Previously, ``filter_variants`` recomputed the
+  full Chou-Fasman structure prediction for *every variant* on the
+  same protein — O(N × L × W) total work. With the cache,
+  ``filter_variants(100, w/ structural)`` is now ~7× faster on the
+  warm-cache call; the cold-call cost is the same as before.
+  Bench (500 variants, 1000-AA protein): 499 cache hits, 1 miss,
+  identical scores across runs. (`mrnavax/variant_scorer.py`)
+
+### Why this matters
+
+The PhyloP weighting fix is a real correctness improvement —
+researchers relying on the variant-scorer output for cross-signal
+composition were seeing inconsistent conservation credit for the
+same biology depending on which dominant signal fired. The
+memoization fix is a meaningful speedup for the most common
+real-world pattern (many variants on the same protein, e.g. a
+per-patient ClinVar-style report).
+
 ## [0.24.0] - 2026-09-18
 
 ### Changed

@@ -118,7 +118,9 @@ def _score_one_each(
                 chrom=v.chrom,
                 ref_dna=v.ref_dna,
                 alt_dna=v.alt_dna,
-                protein_length=len(proteins.get(v.gene, "")) or None,
+                protein_length=(
+                    len(proteins[v.gene]) if v.gene in proteins else None
+                ),
                 uniprot_id=uniprot_ids.get(v.gene),
                 am_lookup=am_lookup_fn,
                 avi_lookup=avi_lookup_fn,
@@ -214,7 +216,6 @@ def build_pipeline_notes(
     am_active: bool,
     filter_active: bool,
     had_dna_coords: bool,
-    filter_has_dna_coords: bool = False,
 ) -> str:
     """Build the user-facing ``note`` string for ``PipelineReport``.
 

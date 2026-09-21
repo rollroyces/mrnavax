@@ -6,6 +6,7 @@ registered with the global ``CHECKS`` registry on import.
 
 from __future__ import annotations
 
+import csv
 import os
 import tempfile
 from pathlib import Path
@@ -78,16 +79,13 @@ def _check_scrna_pipeline_with_avi() -> tuple[bool, str]:
     # Build a minimal variants CSV with DNA coordinates for some variants.
     # We synthesize the file using tempfile because the bundled example
     # CSV (variants_coding.csv) doesn't have DNA columns.
-    import csv as _csv
-    import tempfile as _tempfile
-    from pathlib import Path as _Path
 
     from .sc_rna_pipeline import run_pipeline
 
-    with _tempfile.TemporaryDirectory() as tmp:
-        dna_path = _Path(tmp) / "variants_dna.csv"
+    with tempfile.TemporaryDirectory() as tmp:
+        dna_path = Path(tmp) / "variants_dna.csv"
         with open(dna_path, "w", newline="") as f:
-            w = _csv.writer(f)
+            w = csv.writer(f)
             w.writerow(["gene", "position", "wt_aa", "mut_aa", "chrom", "ref_dna", "alt_dna"])
             # Mix: one coding-region variant (chr17 TP53 R175H), one regulatory (odd pos)
             w.writerow(["TP53", "175", "R", "H", "chr17", "G", "A"])
@@ -112,9 +110,9 @@ def _check_scrna_pipeline_with_avi() -> tuple[bool, str]:
 
         # 4: without DNA coords, pipeline still works
         # Build a CSV without chrom/ref_dna/alt_dna.
-        legacy_path = _Path(tmp) / "legacy.csv"
+        legacy_path = Path(tmp) / "legacy.csv"
         with open(legacy_path, "w", newline="") as f:
-            w = _csv.writer(f)
+            w = csv.writer(f)
             w.writerow(["gene", "position", "wt_aa", "mut_aa"])
             w.writerow(["TP53", "175", "R", "H"])
         legacy_report = run_pipeline(
@@ -320,11 +318,6 @@ def _check_embedding() -> tuple[bool, str]:
     sep = inter / intra if intra else 0
     ok = sep > 1.5  # require at least 1.5x separation
     return ok, f"shape={len(emb)}x{len(emb[0])} inter/intra separation={sep:.2f}x"
-
-
-# Path unused in this module but imported for shared use across families
-_ = Path
-_ = tempfile
 
 
 __all__ = []

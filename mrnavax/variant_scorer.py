@@ -23,6 +23,7 @@ filter the candidate list before peptide enumeration.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Callable
 
 # ---------- BLOSUM62-style substitution matrix (subset, stdlib-only) -------
@@ -708,49 +709,35 @@ def _combine_components(
     # Weighted combination. The dominant signal slot takes 0.45;
     # the residual 0.55 is split among the local components plus a
     # small conservation bonus.
+    #
+    # PhyloP contribution: gradient ``0.10 * cons.score`` when the
+    # PhyloP score is positive (highly-conserved positions add bonus),
+    # zero otherwise. Used identically across all three branches so
+    # the conservation signal contributes consistently regardless of
+    # which dominant signal fires.
+    if cons is not None and cons.score > 0:
+        phylo_boost = 0.10 * cons.score
+    else:
+        phylo_boost = 0.0
+
+    local_weighted = (
+        0.35 * local.blosum_norm
+        + 0.20 * (0.2 if local.driver_gene else 0.0)
+        + 0.15 * local.hydro_norm
+        + 0.20 * local.structural_disruption
+        + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
+        + local.position_penalty
+    )
+
     if avi is not None and avi.weight > 0:
         # AVI dominates (regulatory-region variant).
-        other_total = 1.0 - avi.weight
-        raw = avi.weight * avi.score + other_total * (
-            0.35 * local.blosum_norm
-            + 0.20 * (0.2 if local.driver_gene else 0.0)
-            + 0.15 * local.hydro_norm
-            + 0.20 * local.structural_disruption
-            + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
-            + local.position_penalty
-            + (0.10 if cons is not None and cons.score > 0.3 else 0.0)
-        )
+        raw = avi.weight * avi.score + (1.0 - avi.weight) * local_weighted + phylo_boost
     elif am.weight > 0:
         # AlphaMissense dominates (coding-region variant).
-        other_total = 1.0 - am.weight
-        phylo_boost = (
-            0.10 * cons.score
-            if cons is not None and cons.score > 0
-            else 0.0
-        )
-        raw = am.weight * am.score + other_total * (
-            0.35 * local.blosum_norm
-            + 0.20 * (0.2 if local.driver_gene else 0.0)
-            + 0.15 * local.hydro_norm
-            + 0.20 * local.structural_disruption
-            + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
-            + local.position_penalty
-        ) + phylo_boost
+        raw = am.weight * am.score + (1.0 - am.weight) * local_weighted + phylo_boost
     else:
         # Neither AVI nor AM — local-only weighted combination + PhyloP.
-        phylo_boost = (
-            0.10 * cons.score
-            if cons is not None and cons.score > 0
-            else 0.0
-        )
-        raw = (
-            0.35 * local.blosum_norm
-            + 0.20 * (0.2 if local.driver_gene else 0.0)
-            + 0.15 * local.hydro_norm
-            + 0.20 * local.structural_disruption
-            + 0.10 * (1.0 if local.position_penalty == 0 else 0.0)
-            + local.position_penalty
-        ) + phylo_boost
+        raw = local_weighted + phylo_boost
 
     return raw, components
 
@@ -765,9 +752,19 @@ def predict_secondary_structure(protein: str, *, window: int = 6) -> dict[int, s
     Reference: Chou PY, Fasman GD. "Prediction of the secondary structure of
     proteins from their amino acid sequence." Adv Enzymol Relat Areas Mol
     Biol 47, 45–148 (1978).
+
+    Memoized via functools.lru_cache: filtering N variants on the same
+    protein recomputes the structure prediction N times otherwise
+    (O(N × L × W) total). The cache key is the (protein, window) tuple;
+    bound at 1024 entries to cap memory.
     """
     if not protein:
         return {}
+    return _predict_secondary_structure_inner(protein, window)
+
+
+@lru_cache(maxsize=1024)
+def _predict_secondary_structure_inner(protein: str, window: int) -> dict[int, str]:
     pred: dict[int, str] = {}
     n = len(protein)
     half = window // 2
