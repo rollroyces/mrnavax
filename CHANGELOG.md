@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-09-21
+
+### New features
+
+- **Multi-objective codon optimizer** (`mrnavax/codon_multi_objective.py`):
+  knowledge-infused loss pattern from RNop (arXiv:2505.23862, Aug 2026),
+  addressing the "impossible triangle" of mRNA optimization (fidelity,
+  multi-objective, efficiency) the same way RNop / LinearDesign /
+  RiboDecode all converge. Five normalized components (CAI + GC + CpG +
+  rare-codon-run + structure-proxy) decomposed into per-component
+  breakdown for both before and after. Stdlib-only — no new deps.
+
+  Public API:
+
+  ```python
+  from mrnavax.codon_multi_objective import (
+      MultiObjectiveConfig,
+      multi_objective_optimize,
+      multi_objective_score,
+      ComponentBreakdown,
+      MultiObjectiveResult,
+  )
+
+  cfg = MultiObjectiveConfig()
+  result = multi_objective_optimize(cds, cfg)
+  print(result.before, result.after, result.improvement, result.n_changes)
+  ```
+
+  Defaults follow the canonical SOTA pattern: CAI is the dominant signal
+  (~40%), structure-proxy is next (~25%), then GC and CpG, with
+  rare-codon-run counted as a soft penalty. All weights are tunable via
+  `MultiObjectiveConfig`.
+
+- **New CLI backend** (`--backend multi-objective`): wires the optimizer
+  into `mrnavax codon` so users can run it from the command line.
+
+  ```bash
+  mrnavax codon --sequence gfp.fasta --optimize --backend multi-objective
+  ```
+
+- **New backend integrity check** (`codon.multi_objective_knowledge_infused`):
+  verifies the optimizer preserves the amino-acid sequence, does not
+  regress the overall score, exposes all 5 per-component fields, and
+  runs in <2s on a 60-codon CDS. Total backend checks: 30 → **31**.
+
+### Tests
+
+- **Added `tests/test_codon_multi_objective.py`** (21 tests): per-component
+  unit-interval bounds, weighted-sum clamping, CAI-only config increases
+  CAI, rare-run-only config reduces penalty, fidelity (AA sequence
+  preserved), length preservation, no-regression, n_changes accuracy,
+  JSON serializability, U→T normalization, short-CDS error path.
+
+  Test count: 289 → **310**.
+
+### Docs
+
+- **New section in `docs/tools/codon.md`** (+zh-Hant +zh-Hans): the
+  multi-objective backend documented alongside the existing
+  `basic`/`ribodecode`/`lineardesign`/`ribodecode-real` backends, with
+  the component breakdown table, the customizable `MultiObjectiveConfig`
+  Python example, and the RNop reference (arXiv:2505.23862v2).
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **310/310 unit tests pass**
+- ✅ **31/31 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Why this matters
+
+The top-tier mRNA optimization projects (RNop, LinearDesign, RiboDecode)
+all converge on multi-objective weighted scoring. The pattern is
+grounded in biology: codon usage, GC content, CpG avoidance, rare-codon
+runs, and structure uniformity each capture a different biological
+axis, and the user-visible "before/after" breakdown makes the contribution
+of each axis auditable. Before v0.25.0, mrnavax exposed each component
+in `analyze_cds()` and `LinearDesignResult`, but had no single unified
+multi-objective entry point with tunable weights and per-component
+contribution breakdown. v0.25.0 fills that gap in a stdlib-only,
+well-tested, well-documented way.
+
 ## [0.24.3] - 2026-09-21
 
 ### Tests

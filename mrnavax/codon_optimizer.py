@@ -254,12 +254,14 @@ def _run_cli(argv: list[str]) -> int:
     p.add_argument("--optimize", action="store_true", help="greedy codon-optimize")
     p.add_argument(
         "--backend",
-        choices=["basic", "ribodecode", "lineardesign", "ribodecode-real"],
+        choices=["basic", "ribodecode", "lineardesign", "ribodecode-real", "multi-objective"],
         default="basic",
         help="optimizer: basic (greedy), ribodecode (in-house heuristic), "
-        "lineardesign (joint translation + mRNA structure via DP), or "
+        "lineardesign (joint translation + mRNA structure via DP), "
         "ribodecode-real (published RiboDecode CLI from "
-        "github.com/wangfanfff/RiboDecode, requires ViennaRNA+CUDA)",
+        "github.com/wangfanfff/RiboDecode, requires ViennaRNA+CUDA), or "
+        "multi-objective (SOTA knowledge-infused loss: CAI + GC + CpG + "
+        "rare-codon-run + structure-proxy with per-component breakdown)",
     )
     p.add_argument(
         "--env",
@@ -365,6 +367,16 @@ def _run_cli(argv: list[str]) -> int:
             # accepts full-length CDS.
             verbose = getattr(args, "verbose", False)
             result = optimize_lineardesign(cds, verbose=verbose).to_dict()
+        elif args.backend == "multi-objective":
+            # SOTA pattern (arxiv:2505.23862, Aug 2026): knowledge-infused
+            # loss decomposition with per-component breakdown.
+            from .codon_multi_objective import (
+                MultiObjectiveConfig,
+                multi_objective_optimize,
+            )
+
+            cfg = MultiObjectiveConfig()
+            result = multi_objective_optimize(cds, cfg).to_dict()
         else:
             result = optimize_basic(cds)
     else:

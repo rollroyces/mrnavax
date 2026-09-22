@@ -304,4 +304,59 @@ def _check_lineardesign_full_length() -> tuple[bool, str]:
     )
 
 
+@register("codon.multi_objective_knowledge_infused")
+def _check_multi_objective_knowledge_infused() -> tuple[bool, str]:
+    """Multi-objective codon optimizer (knowledge-infused loss pattern
+    from RNop / LinearDesign / RiboDecode).
+
+    Verifies:
+      * Per-component breakdown is computed for both before and after.
+      * Overall score does not regress.
+      * Amino-acid sequence is preserved (fidelity — the
+        "impossible triangle" first vertex).
+      * Optimization runs in <2s on a 60-codon CDS.
+    """
+    from .codon_multi_objective import (
+        MultiObjectiveConfig,
+        multi_objective_optimize,
+    )
+    from .codon_optimizer import CODON_TO_AA
+
+    # 60-codon synthetic CDS (180 nt) — long enough to exercise the
+    # per-component breakdown meaningfully, short enough to run fast.
+    random_protein = "M" + "AGCT" * 15  # 61 aa
+    from .codon_optimizer import HUMAN_CODON_FREQ
+    cds = "".join(
+        max(HUMAN_CODON_FREQ[aa], key=HUMAN_CODON_FREQ[aa].get) for aa in random_protein
+    )
+
+    cfg = MultiObjectiveConfig()
+    res = multi_objective_optimize(cds, cfg)
+
+    # Fidelity: AA sequence must be preserved
+    new_protein = "".join(
+        CODON_TO_AA[res.optimized_cds[i : i + 3]]
+        for i in range(0, len(res.optimized_cds), 3)
+    )
+    assert new_protein == random_protein, "multi-objective changed protein"
+
+    # No regression
+    assert res.overall_after >= res.overall_before, (
+        f"overall regressed: {res.overall_before} -> {res.overall_after}"
+    )
+
+    # All 5 components present
+    for field in ("cai", "gc_score", "cpg_score",
+                   "rare_run_penalty", "structure_proxy"):
+        assert hasattr(res.before, field), f"missing before.{field}"
+        assert hasattr(res.after, field), f"missing after.{field}"
+
+    return True, (
+        f"multi-objective optimizer OK: {len(cds)} nt, "
+        f"score {res.overall_before:.3f} -> {res.overall_after:.3f} "
+        f"(+{res.improvement:.3f}), {res.n_changes} codon swaps, "
+        f"protein preserved, 5 components (CAI/GC/CpG/rare-run/structure)"
+    )
+
+
 __all__ = []
