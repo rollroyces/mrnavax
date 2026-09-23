@@ -125,6 +125,7 @@ nav:
       - scrna: tools/scrna.md
       - manufacture: tools/manufacture.md
       - spatial: tools/spatial.md
+      - construct: tools/construct.md
   - Backends: backends.md
   - Case studies:
       - Variant prioritization: case-studies/variant-prioritization.md

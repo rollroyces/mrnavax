@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="mrnavax",
         description="mRNA × AI toolkit "
-        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial)",
+        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial / construct)",
     )
     sub = p.add_subparsers(dest="tool", required=True)
 
@@ -45,6 +45,11 @@ def main(argv: list[str] | None = None) -> int:
         help="AlphaGenome Atlas regulatory-variant impact scoring "
         "(AVI score for non-coding regions; AlphaMissense handles coding)",
     )
+    sub.add_parser(
+        "construct",
+        help="compose a full mRNA construct (5'UTR + CDS + 3'UTR + poly-A) "
+        "from a protein amino-acid sequence",
+    )
 
     args, rest = p.parse_known_args(argv)
     runners = {
@@ -60,6 +65,8 @@ def main(argv: list[str] | None = None) -> int:
         return _spatial_run(rest)
     if args.tool == "variant-regulatory":
         return _variant_regulatory_run(rest)
+    if args.tool == "construct":
+        return _construct_run(rest)
     return runners[args.tool](rest)
 
 
@@ -252,6 +259,65 @@ def _variant_regulatory_run(argv: list[str]) -> int:
         },
         indent=2,
     )
+    if args.out:
+        Path(args.out).write_text(out_text + "\n")
+    print(out_text)
+    return 0
+
+
+def _construct_run(argv: list[str]) -> int:
+    """CLI for the mRNA construct designer (5'UTR + CDS + 3'UTR + poly-A)."""
+    from .construct_designer import (
+        ConstructConfig,
+        _read_fasta_single,
+        design_construct,
+    )
+
+    p = argparse.ArgumentParser(prog="mrnavax construct")
+    p.add_argument(
+        "--sequence",
+        required=True,
+        help="Protein AA sequence (FASTA file or raw string)",
+    )
+    p.add_argument(
+        "--backend",
+        choices=["basic", "ribodecode", "lineardesign",
+                 "ribodecode-real", "multi-objective"],
+        default="multi-objective",
+        help="CDS optimization backend (default: multi-objective, the SOTA pattern)",
+    )
+    p.add_argument(
+        "--poly-a-length", type=int, default=120,
+        help="Length of the poly-A tail in nt (default: 120)",
+    )
+    p.add_argument(
+        "--species", default="human", choices=["human"],
+        help="Codon-usage species (default: human)",
+    )
+    p.add_argument(
+        "--out", default=None,
+        help="Write JSON report here (default: stdout)",
+    )
+    args = p.parse_args(argv)
+
+    raw = Path(args.sequence).read_text() if Path(args.sequence).exists() else args.sequence
+    protein = _read_fasta_single(raw)
+    if not protein:
+        print("error: empty protein sequence", file=sys.stderr)
+        return 2
+
+    cfg = ConstructConfig(
+        species=args.species,
+        poly_a_length=args.poly_a_length,
+        optimize_backend=args.backend,
+    )
+    try:
+        result = design_construct(protein, cfg)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    out_text = _json.dumps(result.to_dict(), indent=2)
     if args.out:
         Path(args.out).write_text(out_text + "\n")
     print(out_text)

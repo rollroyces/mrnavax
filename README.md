@@ -6,7 +6,7 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.25.1-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.26.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -72,6 +72,7 @@ flowchart LR
 | `lnp` | LNP composition recommender | Wet-lab | Witten 2025, Li 2024 |
 | `spatial` | STModule spatial-transcriptomics tissue-module identification | Spatial transcriptomics | STModule (Wang et al., *Genome Medicine* 2025) |
 | `variant-regulatory` | AlphaGenome Atlas AVI score for non-coding regulatory variants | Variant prioritization | AlphaGenome Atlas (Avsec et al., *Nature* 2026) |
+| `construct` | Full mRNA construct assembly (5'UTR + CDS + 3'UTR + poly-A) from a protein AA sequence | Therapeutic-mRNA design | mRNA-1273 / BNT162b2 consensus UTRs; multi-objective CDS optimizer (v0.25.0 RNop pattern) |
 
 **Real-model adapters behind Protocol contracts** (opt-in via `pip install` extras):
 

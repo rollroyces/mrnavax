@@ -259,4 +259,74 @@ def _check_conservation_phylop() -> tuple[bool, str]:
     )
 
 
+@register("construct.full_assembly")
+def _check_construct_full_assembly() -> tuple[bool, str]:
+    """mRNA construct designer assembles 5'UTR + CDS + 3'UTR + poly-A
+    and produces a valid full-length DNA construct.
+
+    Verifies:
+      * Full assembly length = utr5 + cds + utr3 + polyA_signal + polyA.
+      * CDS preserves the input amino-acid sequence (fidelity).
+      * CDS is codon-optimized (multi-objective backend default).
+      * Construct starts with the 5'UTR and ends with the poly-A tail.
+      * Full-length eGFP (239 AA) builds without error.
+    """
+    from .codon_optimizer import CODON_TO_AA
+    from .construct_designer import (
+        _POLYA_SIGNAL,
+        ConstructConfig,
+        design_construct,
+    )
+
+    # Small test protein (12 AA) — fast, exercises all regions
+    protein = "MVSKGEELFTGV"
+    result = design_construct(protein)
+
+    # Full assembly length
+    expected_len = (
+        len(result.utr5)
+        + result.cds_length
+        + len(result.utr3)
+        + len(_POLYA_SIGNAL)
+        + len(result.poly_a_tail)
+    )
+    assert len(result.construct_dna) == expected_len, (
+        f"construct length {len(result.construct_dna)} != expected {expected_len}"
+    )
+
+    # Region boundaries
+    assert result.construct_dna.startswith(result.utr5), "5'UTR not at start"
+    assert result.construct_dna.endswith(result.poly_a_tail), "poly-A not at end"
+
+    # Fidelity
+    cds_aas = [
+        CODON_TO_AA[result.cds[i : i + 3]]
+        for i in range(0, len(result.cds), 3)
+    ]
+    assert "".join(cds_aas) == protein, "CDS changed amino-acid sequence"
+
+    # Optimization ran (multi-objective backend is the default)
+    assert len(result.optimization_notes) > 0, (
+        "expected multi-objective optimization note"
+    )
+
+    # Full-length eGFP
+    egfp = (
+        "MVSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTL"
+        "VTTLTYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVN"
+        "RIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHY"
+        "QQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITLGMDELYK"
+    )
+    egfp_result = design_construct(egfp, ConstructConfig())
+    assert egfp_result.n_codons == 239
+    assert egfp_result.cds_length == 239 * 3
+
+    return True, (
+        f"construct designer OK: small (12 AA) {expected_len} nt, "
+        f"eGFP (239 AA) {egfp_result.construct_length} nt; "
+        f"5'UTR + CDS + 3'UTR + AAUAAA + polyA({len(result.poly_a_tail)} nt); "
+        f"CDS fidelity preserved, multi-objective optimization applied"
+    )
+
+
 __all__ = []

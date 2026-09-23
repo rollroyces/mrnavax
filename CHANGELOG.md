@@ -5,6 +5,110 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-09-23
+
+### New features
+
+- **mRNA construct designer** (`mrnavax/construct_designer.py`): compose
+  a full therapeutic mRNA construct (5'UTR + CDS + 3'UTR +
+  polyadenylation signal + poly-A tail) from a protein amino-acid
+  sequence. Stdlib-only — no new deps.
+
+  Architecture mirrors the published therapeutic-mRNA designs
+  (Moderna mRNA-1273, BioNTech BNT162b2):
+
+  * **5'UTR** — Human consensus with strong Kozak context
+    (`GGGCGACGCGGTGGCGGCCGCTCATGG`).
+  * **CDS** — Reverse-translated from the protein AA sequence, then
+    optimized via one of the five codon backends. The default
+    backend is `multi-objective` (v0.25.0 RNop pattern), since it
+    gives the best SOTA pattern of fidelity + multi-objective + efficiency.
+  * **3'UTR** — Human consensus with two ARE-stabilizing elements
+    (~120 nt).
+  * **Polyadenylation signal** — `AATAAA`.
+  * **Poly-A tail** — Default 120 nt, configurable via
+    `--poly-a-length`.
+
+  Public API:
+
+  ```python
+  from mrnavax.construct_designer import (
+      ConstructConfig, ConstructResult, design_construct,
+  )
+
+  cfg = ConstructConfig()  # human consensus, multi-objective backend
+  result = design_construct("MVSKGEELFTGV", cfg)
+  print(result.construct_dna, result.construct_length, result.gc_percent)
+  ```
+
+- **New CLI subcommand** (`mrnavax construct`): wires the designer
+  into the toolkit's CLI alongside the existing 8 tools.
+
+  ```bash
+  mrnavax construct --sequence "MVSKGEELFTGV"
+  mrnavax construct --sequence my_protein.fasta --backend lineardesign
+  mrnavax construct --sequence my_protein.fasta --poly-a-length 100
+  ```
+
+- **New backend integrity check** (`construct.full_assembly`):
+  verifies the designer assembles the full construct with the
+  expected length (5'UTR + CDS + 3'UTR + polyA_signal + polyA),
+  preserves the input amino-acid sequence (fidelity), runs the
+  multi-objective optimization, and scales to full-length eGFP
+  (239 AA). Total backend checks: 31 → **32**.
+
+### Tests
+
+- **Added `tests/test_construct_designer.py`** (22 tests): reverse
+  translation (per-AA codon selection), ConstructConfig defaults,
+  full assembly length, CDS fidelity, length divisibility by 3,
+  n_codons matching protein length, configurable poly-A length,
+  basic + multi-objective backends, unknown backend raises,
+  to_dict JSON-serializability, CDS analysis populated, GC% in
+  range, empty / invalid protein raises, full-length eGFP (239 AA).
+
+  Test count: 323 → **345**.
+
+### Docs
+
+- **New section `docs/tools/construct.md`** (+zh-Hant +zh-Hans):
+  architecture diagram (5'UTR → CDS → 3'UTR → polyA_signal →
+  poly-A), usage examples, output schema, biological rationale
+  ("why this matters"), reference to mRNA-1273/BNT162b2 design
+  patterns.
+
+- **Updated `mkdocs.yml`** to add `construct` to the Tools nav.
+
+- **Updated `README.md`** to add `construct` to the tools table.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **345/345 unit tests pass**
+- ✅ **32/32 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ sdist + wheel built
+- ✅ twine check PASSED
+
+### Why this matters
+
+The published therapeutic-mRNA designs (Moderna mRNA-1273, BioNTech
+BNT162b2) all share a common architecture: 5'UTR (Kozak context) +
+CDS + 3'UTR (ARE elements) + polyadenylation signal + poly-A tail.
+Before v0.26.0, mrnavax exposed each component in isolation (`codon`
+for CDS, `manufacture` for QC checks). With v0.26.0, the `construct`
+tool assembles the full therapeutic-mRNA architecture in one CLI
+call, with the SOTA multi-objective optimizer applied to the CDS by
+default — so a researcher can go from "protein sequence" to
+"therapeutic-mRNA construct DNA" in one command.
+
+### Backwards compatibility
+
+- All 8 existing tools unchanged.
+- All 31 existing backend checks unchanged.
+- The `construct` tool is purely additive: a new module, a new CLI
+  subcommand, a new backend check, and 3 new doc pages.
+
 ## [0.25.1] - 2026-09-23
 
 ### Atlas API key resolution — helper-file path
