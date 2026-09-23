@@ -72,6 +72,42 @@ from typing import Callable, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
+
+def _load_api_key(explicit: str | None = None) -> str:
+    """Resolve the AlphaGenome API key with the following precedence:
+
+    1. ``explicit`` argument (highest priority — caller-supplied).
+    2. ``ALPHAGENOME_API_KEY`` environment variable (the CI / GitHub
+       Actions secret path).
+    3. ``~/projects/alphagenome-work/.alphagenome_key`` helper file
+       (local development convenience so users don't have to export
+       the env var for every shell). The file is read once and
+       stripped. Skipped silently if missing or unreadable.
+    4. ``~/.alphagenome_key`` (alternative location for users who
+       keep their secrets in ``$HOME``). Same silent-skip behavior.
+
+    Returns an empty string if no key is found anywhere; callers
+    raise ``ValueError`` with a clear remediation message.
+    """
+    if explicit:
+        return explicit
+    env_key = os.environ.get("ALPHAGENOME_API_KEY", "").strip()
+    if env_key:
+        return env_key
+    for helper_path in (
+        Path.home() / "projects" / "alphagenome-work" / ".alphagenome_key",
+        Path.home() / ".alphagenome_key",
+    ):
+        try:
+            if helper_path.is_file():
+                return helper_path.read_text().strip()
+        except OSError:
+            # Permission denied or unreadable — skip silently and
+            # continue to the next location. The caller will raise
+            # a single, consolidated error if no key is found.
+            continue
+    return ""
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -223,12 +259,13 @@ class AlphaGenomeCLIAdapter:
         shim_path: str | os.PathLike[str] | None = None,
         _run: Callable | None = None,
     ) -> None:
-        self.api_key = api_key or os.environ.get("ALPHAGENOME_API_KEY", "")
+        self.api_key = _load_api_key(api_key)
         if not self.api_key:
             raise ValueError(
                 "AlphaGenomeCLIAdapter requires an API key. Set the "
-                "ALPHAGENOME_API_KEY environment variable or pass "
-                "api_key=... explicitly."
+                "ALPHAGENOME_API_KEY environment variable, "
+                "place the key at ~/projects/alphagenome-work/.alphagenome_key "
+                "(local dev convenience), or pass api_key=... explicitly."
             )
         self.shim_path = (
             Path(shim_path) if shim_path is not None
@@ -284,12 +321,14 @@ class AlphaGenomeCLIAdapter:
 def select_regulatory_scorer() -> RegulatoryVariantScorer:
     """Return the appropriate backend based on environment.
 
-    * If ``ALPHAGENOME_API_KEY`` is set, return the real adapter.
+    * If a key is resolvable (env var, helper file, or
+      ``api_key=`` argument), return the real adapter.
     * Otherwise return the mock (stdlib-only, deterministic).
+
+    Resolution order is implemented by ``_load_api_key``.
     """
-    api_key = os.environ.get("ALPHAGENOME_API_KEY")
-    if api_key:
-        return AlphaGenomeCLIAdapter(api_key=api_key)
+    if _load_api_key():
+        return AlphaGenomeCLIAdapter()
     return MockRegulatoryVariantScorer()
 
 

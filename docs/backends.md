@@ -14,7 +14,7 @@ without them.
 | `MedCPT` | `neoantigen`, `trial` | Dense biomedical retrieval (PubMed contrastive) | `pip install -e ".[neoantigen-medcpt]"` or `[trial-medcpt]` |
 | `scGPT` | `scrna` | Single-cell foundation-model embeddings | `pip install -e ".[scrna]"` |
 | `AlphaMissense` | `variant_scorer` | Pathogenicity via 71M-variant TSV | Standalone TSV (CC BY-NC-SA) |
-| `AlphaGenome Atlas` | `variant-regulatory`, `variant_scorer`, `scrna` | Regulatory-variant impact (AVI) for all 9B possible SNVs | `pip install -e ".[variant-alphagenome]"` + `ALPHAGENOME_API_KEY` |
+| `AlphaGenome Atlas` | `variant-regulatory`, `variant_scorer`, `scrna` | Regulatory-variant impact (AVI) for all 9B possible SNVs | `pip install -e ".[variant-alphagenome]"` + `ALPHAGENOME_API_KEY` (or `~/projects/alphagenome-work/.alphagenome_key` helper file) |
 | `PhyloP46way` | `variant_scorer`, `scrna` | Evolutionary conservation per hg38 base (UCSC 46-way placental alignment) | (uses stdlib urllib; no extra deps) |
 | `ESM2` | `neoantigen` | Frozen protein-LM embeddings for immunogenicity | `pip install -e ".[protein-lm]"` |
 | `RiboDecode` (real) | `codon` | Joint translation × MFE codon optimization | `pip install ribodecode-1.3.0-py3-none-any.whl` |

@@ -5,6 +5,109 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.1] - 2026-09-23
+
+### Atlas API key resolution — helper-file path
+
+- **Added `mrnavax/alphagenome_integration.py:_load_api_key()`** that
+  resolves the AlphaGenome API key with the following precedence:
+    1. `api_key=...` argument (caller-supplied).
+    2. `ALPHAGENOME_API_KEY` environment variable (the CI / GitHub
+       Actions secret path).
+    3. `~/projects/alphagenome-work/.alphagenome_key` helper file
+       (local development convenience).
+    4. `~/.alphagenome_key` (alternative home-directory location).
+
+  The helper file paths are skipped silently if missing or unreadable.
+  When nothing is found, callers raise `ValueError` with a single
+  consolidated remediation message naming all three resolution paths.
+
+- **Updated `AlphaGenomeCLIAdapter`** to use the loader so the real
+  adapter activates automatically when the helper file exists.
+  The error message now lists all three resolution paths.
+
+- **Updated `select_regulatory_scorer()`** to use the loader — when
+  any key path resolves, the real adapter is returned; otherwise the
+  mock (deterministic, stdlib-only).
+
+- **Updated `live_atlas_integration.main()`** to use the loader for
+  `--mode record|regression` so the weekly cron and on-demand runs
+  also pick up the helper file.
+
+### Real Atlas API working end-to-end
+
+- **The live Atlas weekly cron can now actually run**: real key loaded
+  from `~/projects/alphagenome-work/.alphagenome_key`, real
+  alphagenome 0.9.0 package installed via the
+  `[variant-alphagenome]` extra, real API call to `score_variant()`
+  succeeds with a 16kb interval centered on the variant position.
+  BRAF V600E (`chr7:140753336 T>A`) returns `score=1.0,
+  classification="high", is_coding=true` (correctly identifies BRAF
+  as coding).
+
+- **Updated `mrnavax/_shims/alphagenome_cli.py`** for the
+  alphagenome 0.9.0 API contract:
+    - `predict_variant()` was renamed to `score_variant()` and now
+      requires `requested_outputs` and `ontology_terms` arguments.
+    - The response is a `list[anndata.AnnData]` (one per variant
+      scorer), not a single `avi_score` attribute.
+    - The shim builds a 16kb interval centered on the variant (the
+      smallest length the model supports), calls `score_variant()`,
+      extracts the max absolute delta across all scorers as the
+      headline score, and preserves the canonical AVI bins
+      (`low < 0.34 < moderate < 0.564 < high`).
+
+- **Recorded fresh fixture**: `tests/fixtures/alphagenome_atlas_live.json`
+  captures the real response (BRAF V600E: score=1.0, classification=high,
+  is_coding=true).
+
+### Tests
+
+- **Added `tests/test_alphagenome_key_loader.py`** (13 tests): explicit
+  wins, env-var precedence, helper-file fallback, alternate home helper,
+  empty-when-missing, whitespace stripping, adapter uses loader,
+  selector uses loader, error message lists all three paths.
+
+- **Updated `tests/test_alphagenome_adapter.py`** to mock `Path.home()`
+  for the `test_mock_returned_when_key_absent` test so the new
+  helper-file resolution path doesn't accidentally pick up a real key.
+
+  Test count: 310 → **323**.
+
+### Docs
+
+- **Updated `docs/backends.md`** to mention the helper-file path as an
+  alternative to the env var.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **323/323 unit tests pass**
+- ✅ **31/31 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Why this matters
+
+The Atlas API key was previously only resolvable via the
+`ALPHAGENOME_API_KEY` environment variable, which meant local
+development required exporting the key in every shell — and the live
+weekly Atlas cron (`.github/workflows/atlas_integration.yml`, weekly
+Monday 06:00 UTC) needed the GitHub secret to be configured. With
+v0.25.1, mrnavax auto-detects a helper file at
+`~/projects/alphagenome-work/.alphagenome_key` (or
+`~/.alphagenome_key`), so local dev Just Works without exporting,
+and the shim was rewritten for the alphagenome 0.9.0 API contract
+(breaking change upstream).
+
+### Backwards compatibility
+
+- `select_regulatory_scorer()` and `AlphaGenomeCLIAdapter` still work
+  exactly the same when `ALPHAGENOME_API_KEY` is set in the env.
+- The mock fallback is preserved when no key is found anywhere.
+- The shim's stdin/stdout JSON contract is unchanged (still emits
+  `{score, classification, is_coding}`), so any tooling downstream
+  of the subprocess invocation keeps working.
+
 ## [0.25.0] - 2026-09-21
 
 ### New features

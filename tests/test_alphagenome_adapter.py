@@ -27,6 +27,7 @@ Two backends satisfy the Protocol:
 from __future__ import annotations
 
 import csv
+import os
 import unittest
 from pathlib import Path
 
@@ -127,22 +128,27 @@ class TestRegulatoryScoreFunction(unittest.TestCase):
 
 
 class TestBackendSelector(unittest.TestCase):
-    """select_regulatory_scorer returns the mock unless ALPHAGENOME_API_KEY is set."""
+    """select_regulatory_scorer returns the mock unless a key is resolvable."""
 
     def test_mock_returned_when_key_absent(self):
-        import os
+        from pathlib import Path
+        from unittest import mock
 
         old = os.environ.pop("ALPHAGENOME_API_KEY", None)
+        # Point Path.home() at an empty dir so the helper-file lookup
+        # doesn't accidentally find a real key (v0.25.1+ resolution
+        # path includes ~/projects/alphagenome-work/.alphagenome_key).
+        empty_home = Path("/tmp/_mrnavax_empty_home_for_selector_test")
+        empty_home.mkdir(parents=True, exist_ok=True)
         try:
-            sel = select_regulatory_scorer()
-            self.assertIsInstance(sel, MockRegulatoryVariantScorer)
+            with mock.patch.object(Path, "home", return_value=empty_home):
+                sel = select_regulatory_scorer()
+                self.assertIsInstance(sel, MockRegulatoryVariantScorer)
         finally:
             if old is not None:
                 os.environ["ALPHAGENOME_API_KEY"] = old
 
     def test_real_returned_when_key_present(self):
-        import os
-
         os.environ["ALPHAGENOME_API_KEY"] = "fake-test-key"
         try:
             sel = select_regulatory_scorer()

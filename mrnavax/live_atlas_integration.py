@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -429,11 +428,15 @@ def main(argv: list[str] | None = None) -> int:
             "alt": parts[3],
         }
 
-    # Run
-    api_key = os.environ.get("ALPHAGENOME_API_KEY", "")
+    # Run — resolve API key via the standard loader (env var or helper file).
+    from .alphagenome_integration import _load_api_key
+
+    api_key = _load_api_key()
     if args.mode != "mock" and not api_key:
         print(
-            f"error: ALPHAGENOME_API_KEY not set; required for {args.mode} mode",
+            "error: AlphaGenome API key not found. Set ALPHAGENOME_API_KEY, "
+            "place the key at ~/projects/alphagenome-work/.alphagenome_key, "
+            f"or pass api_key=...; required for {args.mode} mode",
             file=sys.stderr,
         )
         return 2

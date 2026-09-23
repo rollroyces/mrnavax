@@ -1,0 +1,12 @@
+{
+  "chrom": "chr7",
+  "pos": 140753336,
+  "ref": "T",
+  "alt": "A",
+  "score": 1.0,
+  "classification": "high",
+  "is_coding": true,
+  "captured_at": "2026-09-23T07:56:11.107181+00:00",
+  "source": "alphagenome",
+  "error": ""
+}
