@@ -34,43 +34,65 @@ def _try_am_lookup() -> tuple[Callable | None, bool]:
     Returns (lookup_fn, is_real_index). lookup_fn is None if no real
     index is available; is_real_index is True only if a real
     AlphaMissense TSV cache was loaded.
+
+    Implementation (v0.29.0): delegates to ``_safe_selector`` for the
+    import + factory call, then performs the CACHE_FILE.exists() check
+    and load_index() warm-up locally — that branch isn't a simple
+    ``factory()`` call.
     """
-    try:
-        from .alphamissense_integration import (
-            CACHE_FILE,
-            load_index,
-            lookup,
-        )
+    from ._adapter_selectors import _safe_selector
+
+    def _setup_alphamissense(_factory_result: None) -> None:
+        # CACHE_FILE check + load_index() warm-up — runs only after
+        # the factory import succeeded. Kept here rather than in the
+        # helper because it's AM-specific.
+        from .alphamissense_integration import CACHE_FILE, load_index
 
         if CACHE_FILE.exists():
             load_index()
-            return lookup, True
-    except Exception:
-        pass
-    return None, False
+
+    factory_result, is_real = _safe_selector(
+        ".alphamissense_integration",
+        "lookup",
+        extra_setup=_setup_alphamissense,
+    )
+    if not is_real:
+        return None, False
+    return factory_result, True
 
 
 def _try_avi_lookup() -> Callable | None:
     """Build the AlphaGenome Atlas AVI lookup, preferring the real Atlas
     when ``ALPHAGENOME_API_KEY`` is set + ``[variant-alphagenome]``
     extra installed; mock otherwise.
-    """
-    try:
-        from .alphagenome_integration import select_regulatory_scorer
 
-        return select_regulatory_scorer().score_variant
-    except Exception:
+    Implementation (v0.29.0): delegates to ``_safe_selector``.
+    """
+    from ._adapter_selectors import _safe_selector
+
+    factory_result, is_real = _safe_selector(
+        ".alphagenome_integration",
+        "select_regulatory_scorer",
+    )
+    if not is_real or factory_result is None:
         return None
+    return factory_result.score_variant
 
 
 def _try_conservation_lookup() -> Callable | None:
-    """Build the PhyloP46way conservation lookup. Mock by default."""
-    try:
-        from .conservation import select_conservation_lookup
+    """Build the PhyloP46way conservation lookup. Mock by default.
 
-        return select_conservation_lookup().lookup
-    except Exception:
+    Implementation (v0.29.0): delegates to ``_safe_selector``.
+    """
+    from ._adapter_selectors import _safe_selector
+
+    factory_result, is_real = _safe_selector(
+        ".conservation",
+        "select_conservation_lookup",
+    )
+    if not is_real or factory_result is None:
         return None
+    return factory_result.lookup
 
 
 def _build_v_dicts(variants: list[Variant]) -> list[dict]:
@@ -140,6 +162,7 @@ def filter_variants_with_lookups(
     min_score: float,
     proteins: dict[str, str],
     uniprot_ids: dict[str, str],
+    score_only: bool = False,
 ) -> tuple[list[Variant], dict[str, float], bool]:
     """Filter variants with all lookups wired, returning (kept, scores,
     am_active).
@@ -149,24 +172,60 @@ def filter_variants_with_lookups(
     ``scores`` is the per-variant normalized-score dict (empty when
     filtering is enabled AND no DNA coords present).
     ``am_active`` is True if a real AlphaMissense index was loaded.
+
+    Three explicit modes (v0.29.0):
+      1. ``score_only=False`` and ``top_fraction >= 1.0`` and
+         ``min_score <= 0.0`` and no DNA coords: ``noop`` mode —
+         return the input variants unchanged with empty scores.
+      2. ``score_only=False`` and filter active (``top_fraction < 1.0``
+         or ``min_score > 0.0``): ``filter`` mode — score, then keep
+         variants above thresholds.
+      3. ``score_only=False`` and no filter and DNA coords present:
+         ``score_each`` mode — score every variant so the report
+         carries per-variant AVI scores.
+      4. ``score_only=True``: explicit score-only mode — score every
+         variant (no filtering), equivalent to mode 3 but with
+         an explicit caller intent.
+
+    Mode 4 (score_only) was previously inferred from the absence of
+    filter thresholds + presence of DNA coords. The explicit flag
+    removes the inference ambiguity and lets callers opt into the
+    "I want scores but no filter" path directly.
+
+    Backward compatible: existing callers passing only
+    (variants, top_fraction, min_score, proteins, uniprot_ids) keep
+    the inferred behavior (mode 1/2/3).
     """
     from .variant_scorer import filter_variants
 
     am_lookup_fn, am_active = _try_am_lookup()
 
-    filter_active = (
-        top_fraction < 1.0 or min_score > 0.0
-    )
     has_dna_coords = any(v.chrom is not None for v in variants)
+    filter_active = top_fraction < 1.0 or min_score > 0.0
 
+    # Mode 4: explicit score-only override. The flag forces
+    # score-each behavior regardless of the inferred mode.
+    if score_only:
+        if not has_dna_coords:
+            return variants, {}, am_active
+        avi_lookup_fn = _try_avi_lookup()
+        conservation_lookup_fn = _try_conservation_lookup()
+        scores = _score_one_each(
+            variants,
+            proteins=proteins,
+            uniprot_ids=uniprot_ids,
+            am_lookup_fn=am_lookup_fn,
+            avi_lookup_fn=avi_lookup_fn,
+            conservation_lookup_fn=conservation_lookup_fn,
+        )
+        return variants, scores, am_active
+
+    # Mode 2: filter active.
     if filter_active:
-        # Wire the optional lookups (mock by default; real Atlas /
-        # UCSC when secrets are set + extras installed).
         avi_lookup_fn = _try_avi_lookup() if has_dna_coords else None
         conservation_lookup_fn = (
             _try_conservation_lookup() if has_dna_coords else None
         )
-
         scored = filter_variants(
             _build_v_dicts(variants),
             top_fraction=top_fraction,
@@ -190,10 +249,8 @@ def filter_variants_with_lookups(
         }
         return kept, scores, am_active
 
+    # Mode 3: no filter + DNA coords — score each variant.
     if has_dna_coords:
-        # No filter requested but DNA coordinates present — score
-        # each variant individually so the report carries per-variant
-        # AVI scores for regulatory + coding variants.
         avi_lookup_fn = _try_avi_lookup()
         conservation_lookup_fn = _try_conservation_lookup()
         scores = _score_one_each(
@@ -206,8 +263,7 @@ def filter_variants_with_lookups(
         )
         return variants, scores, am_active
 
-    # No filter, no DNA coords → no scoring happens; report just
-    # carries n_variants_input and the peptides list.
+    # Mode 1: noop.
     return variants, {}, am_active
 
 

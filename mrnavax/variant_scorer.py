@@ -553,6 +553,85 @@ class VariantScore:
     rationale: str
 
 
+@dataclass
+class VariantInputs:
+    """Structured input for ``score_variant()`` and ``score_variant_from_inputs()``.
+
+    The four positional fields of ``score_variant()`` (gene, position,
+    wt_aa, mut_aa) are required; all other fields are optional. Pass
+    this dataclass as the single argument to
+    ``score_variant_from_inputs(inputs)`` to avoid the 14-kwarg
+    signature of the legacy ``score_variant()`` function.
+
+    New in v0.29.0 — the dataclass is additive; existing kwargs callers
+    of ``score_variant()`` are unaffected.
+    """
+    gene: str
+    position: int
+    wt_aa: str
+    mut_aa: str
+    chrom: str | None = None
+    ref_dna: str | None = None
+    alt_dna: str | None = None
+    pos: int | None = None
+    protein_length: int | None = None
+    protein_sequence: str | None = None
+    uniprot_id: str | None = None
+    am_lookup: Callable | None = None
+    avi_lookup: Callable | None = None
+    conservation_lookup: Callable | None = None
+    driver_genes: set[str] | None = None
+    strict: bool = False
+    utr5: str | None = None
+    utr3: str | None = None
+
+    @classmethod
+    def from_kwargs(
+        cls,
+        gene: str,
+        position: int,
+        wt_aa: str,
+        mut_aa: str,
+        **kwargs,
+    ) -> "VariantInputs":
+        """Build from the same kwargs shape as ``score_variant()``."""
+        return cls(
+            gene=gene,
+            position=position,
+            wt_aa=wt_aa,
+            mut_aa=mut_aa,
+            **kwargs,
+        )
+
+
+def score_variant_from_inputs(inputs: VariantInputs) -> VariantScore | None:
+    """Score a single missense variant from a structured ``VariantInputs``.
+
+    Functionally identical to ``score_variant()`` but accepts the full
+    input as a single dataclass argument. New in v0.29.0.
+    """
+    return score_variant(
+        inputs.gene,
+        inputs.position,
+        inputs.wt_aa,
+        inputs.mut_aa,
+        chrom=inputs.chrom,
+        ref_dna=inputs.ref_dna,
+        alt_dna=inputs.alt_dna,
+        pos=inputs.pos,
+        protein_length=inputs.protein_length,
+        protein_sequence=inputs.protein_sequence,
+        uniprot_id=inputs.uniprot_id,
+        am_lookup=inputs.am_lookup,
+        avi_lookup=inputs.avi_lookup,
+        conservation_lookup=inputs.conservation_lookup,
+        driver_genes=inputs.driver_genes,
+        strict=inputs.strict,
+        utr5=inputs.utr5,
+        utr3=inputs.utr3,
+    )
+
+
 def score_variant(
     gene: str,
     position: int,

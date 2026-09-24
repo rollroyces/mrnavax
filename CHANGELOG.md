@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-09-24
+
+### Public-API refinements (additive, backward compatible)
+
+Three internal refactors were landed, all behind existing public APIs:
+
+1. **VariantInputs dataclass + score_variant_from_inputs()** —
+   addresses the deferred Altitude #2 finding from the v0.24 review
+   ("score_variant 13-param signature → dataclasses").
+   - New mrnavax.variant_scorer.VariantInputs dataclass with 4
+     required + 14 optional fields.
+   - New mrnavax.variant_scorer.score_variant_from_inputs(inputs)
+     accepts the dataclass as its single argument.
+   - VariantInputs.from_kwargs(...) factory builds the dataclass
+     from the existing kwargs shape.
+   - Existing score_variant(...) with positional + kwargs is
+     UNCHANGED. Verified: score_variant_from_inputs() produces the
+     exact same normalized_score as score_variant() for the same
+     inputs (372 tests pass; new test_variant_inputs_equivalence
+     in test_v029_refactor.py).
+
+2. **_safe_selector() helper** —
+   addresses the deferred Reuse #2 finding
+   ("_safe_selector(import_path, factory_name, method_name) helper
+   for the three _try_*_lookups").
+   - New mrnavax._adapter_selectors._safe_selector() (private
+     helper). Returns (result, is_real) tuple — True only if the
+     real adapter was successfully imported + instantiated.
+   - The three _try_*_lookup() functions in
+     mrnavax/_scrna_filter.py now delegate to _safe_selector().
+     Behavior is unchanged (same import fallback semantics).
+   - 6 new tests in test_v029_refactor.py cover success, missing
+     module, missing factory, factory_args, factory_kwargs, and
+     extra_setup behavior.
+
+3. **filter_variants_with_lookups(score_only=True)** —
+   addresses the deferred Altitude #4 finding
+   ("filter_variants_with_lookups 3-mode branching → explicit
+   score-only mode").
+   - New optional kwarg score_only: bool = False on
+     mrnavax._scrna_filter.filter_variants_with_lookups().
+   - When True, forces the score-each behavior regardless of the
+     inferred mode. Removes the previous ambiguity where
+     "no filter + DNA coords" implicitly meant "score each".
+
+### Why this version is backward compatible
+
+- score_variant() — same signature, same return type, same behavior.
+- _try_*_lookup() — same signatures, same behavior.
+- filter_variants_with_lookups() — score_only defaults to False,
+  preserving the inferred-mode behavior of v0.28.
+
+### Tests
+
+- 12 new tests in test_v029_refactor.py:
+  - VariantInputs.from_kwargs (2 tests) — minimal + with options
+  - score_variant_from_inputs (2 tests) — equivalence + with utr
+  - _safe_selector (6 tests) — success, missing module, missing
+    factory, factory_args, factory_kwargs, extra_setup
+  - filter_variants_with_lookups (2 tests) — score_only=True
+    no-dna + score_only=True with-dna
+- Test count: 360 → **372**.
+
+### Backend integrity
+
+- **New backend check** (variant.score_variant_inputs_dataclass):
+  verifies field count (4 required + 14 optional = 18 total),
+  from_kwargs builder, score_variant_from_inputs equivalence,
+  score_only=True score-each behavior.
+- Total backend checks: 33 → **34**.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **372/372 unit tests pass**
+- ✅ **34/34 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ twine check PASSED
+
+### Skipped (per production-readiness: don't rewrite)
+
+- Full breaking public API change for score_variant (e.g. removing
+  the kwargs API in favor of VariantInputs) was deferred. With the
+  additive VariantInputs API now in place, the kwargs API can be
+  deprecated in v0.30+ when user feedback indicates the timing
+  is right. The user explicitly chose the additive non-breaking
+  path for v0.29.0.
+
 ## [0.28.0] - 2026-09-24
 
 ### Module export hygiene

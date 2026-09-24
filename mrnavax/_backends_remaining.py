@@ -396,4 +396,98 @@ def _check_utr_aware_scoring() -> tuple[bool, str]:
     )
 
 
+@register("variant.score_variant_inputs_dataclass")
+def _check_score_variant_inputs_dataclass() -> tuple[bool, str]:
+    """VariantInputs dataclass + score_variant_from_inputs (v0.29.0).
+
+    Verifies:
+      * VariantInputs is a public dataclass with 4 required + 14 optional
+        fields (18 total).
+      * VariantInputs.from_kwargs() builds the same shape as kwargs callers
+        of score_variant() use.
+      * score_variant_from_inputs(inputs) returns the same normalized_score
+        as score_variant(**kwargs).
+      * filter_variants_with_lookups(score_only=True) forces the
+        score-each behavior regardless of inferred mode.
+    """
+    import dataclasses
+
+    from .sc_rna_pipeline import Variant
+    from .variant_scorer import (
+        VariantInputs,
+        score_variant,
+        score_variant_from_inputs,
+    )
+
+    # 1. VariantInputs has 4 required + 14 optional fields (18 total)
+    fields = VariantInputs.__dataclass_fields__
+    required = [
+        f for f, v in fields.items()
+        if v.default is dataclasses.MISSING
+        and v.default_factory is dataclasses.MISSING
+    ]
+    assert len(required) == 4, (
+        f"VariantInputs must have 4 required fields, got {len(required)}: {required}"
+    )
+    assert "gene" in required
+    assert "position" in required
+    assert "wt_aa" in required
+    assert "mut_aa" in required
+    assert len(fields) == 18, (
+        f"VariantInputs must have 18 fields total, got {len(fields)}"
+    )
+
+    # 2. from_kwargs builds the dataclass correctly
+    inputs = VariantInputs.from_kwargs(
+        "BRAF", 600, "V", "E",
+        protein_length=766,
+        chrom="chr7",
+        pos=140753336,
+    )
+    assert inputs.gene == "BRAF"
+    assert inputs.position == 600
+    assert inputs.wt_aa == "V"
+    assert inputs.mut_aa == "E"
+    assert inputs.protein_length == 766
+    assert inputs.chrom == "chr7"
+    assert inputs.pos == 140753336
+
+    # 3. score_variant_from_inputs produces the same result
+    r_kwargs = score_variant("BRAF", 600, "V", "E", protein_length=766)
+    r_inputs = score_variant_from_inputs(inputs)
+    assert r_kwargs is not None
+    assert r_inputs is not None
+    assert r_inputs.normalized_score == r_kwargs.normalized_score
+
+    # 4. score_only=True on filter_variants_with_lookups forces score-each
+    variants_with_dna = [
+        Variant(
+            gene="BRAF", position=600, wt_aa="V", mut_aa="E",
+            chrom="chr7", ref_dna="T", alt_dna="A",
+        ),
+    ]
+    from ._scrna_filter import filter_variants_with_lookups
+    kept, scores, _ = filter_variants_with_lookups(
+        variants_with_dna,
+        top_fraction=1.0,
+        min_score=0.0,
+        proteins={"BRAF": "M" * 766},
+        uniprot_ids={"BRAF": "P15056"},
+        score_only=True,
+    )
+    assert kept == variants_with_dna
+    assert len(scores) == 1, (
+        f"score_only=True with DNA coords must produce scores, got {scores}"
+    )
+
+    return True, (
+        f"VariantInputs OK: {len(fields)} fields ({len(required)} required + "
+        f"{len(fields) - len(required)} optional); "
+        f"score_variant_from_inputs() matches score_variant() at "
+        f"{r_inputs.normalized_score:.3f}; "
+        f"score_only=True forces score-each behavior "
+        f"({len(scores)} variant scored with DNA coords)"
+    )
+
+
 __all__ = []
