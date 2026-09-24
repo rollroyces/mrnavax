@@ -329,4 +329,71 @@ def _check_construct_full_assembly() -> tuple[bool, str]:
     )
 
 
+@register("variant.utr_aware_scoring")
+def _check_utr_aware_scoring() -> tuple[bool, str]:
+    """UTR context as a 5th signal in score_variant (v0.27.0).
+
+    Verifies:
+      * Without utr5/utr3, the components dict has no utr_context_score
+        (backward compatible — the 4-signal composition is preserved).
+      * With strong utr5 + utr3 supplied, utr_context_score / kozak_score /
+        utr3_score appear in the components dict.
+      * With strong UTR context, the normalized_score is >= the
+        score without UTR context (bonus, never a penalty).
+      * With weak UTR context, the normalized_score is also >= the
+        score without UTR context (additive bonus only, never a penalty).
+    """
+    from .variant_scorer import score_variant
+
+    # 1. Without UTR context — must NOT add utr_context_score
+    r_no = score_variant(
+        gene="BRAF", position=600, wt_aa="V", mut_aa="E",
+        protein_length=766, chrom="chr7", pos=140753336,
+    )
+    assert r_no is not None, "score_variant returned None without UTR context"
+    assert "utr_context_score" not in r_no.components, (
+        "utr_context_score must not appear when utr5/utr3 are unset"
+    )
+
+    # 2. With strong UTR context — components must include utr scores
+    r_strong = score_variant(
+        gene="BRAF", position=600, wt_aa="V", mut_aa="E",
+        protein_length=766, chrom="chr7", pos=140753336,
+        utr5="GGGCGACGCGGTGGCGGCCACCAAT",
+        utr3="AUUUAGCAUUUAGCAUUUAG" + "A" * 100,
+    )
+    assert r_strong is not None, "score_variant returned None with UTR context"
+    assert "utr_context_score" in r_strong.components
+    assert "kozak_score" in r_strong.components
+    assert "utr3_score" in r_strong.components
+
+    # 3. With weak UTR context — components must still include utr scores
+    r_weak = score_variant(
+        gene="BRAF", position=600, wt_aa="V", mut_aa="E",
+        protein_length=766, chrom="chr7", pos=140753336,
+        utr5="GGGCGACGCAAAAAAAAAAAAAAAAAAAA",
+        utr3="GCGCGCGC" * 5,
+    )
+    assert r_weak is not None
+    assert "utr_context_score" in r_weak.components
+
+    # 4. Strong UTR context boosts score (or keeps it equal)
+    assert r_strong.normalized_score >= r_no.normalized_score, (
+        f"strong UTR lowered score: {r_strong.normalized_score} < {r_no.normalized_score}"
+    )
+
+    # 5. Weak UTR context never lowers the score (additive bonus only)
+    assert r_weak.normalized_score >= r_no.normalized_score, (
+        f"weak UTR lowered score: {r_weak.normalized_score} < {r_no.normalized_score}"
+    )
+
+    return True, (
+        f"UTR-aware scoring OK: no-utr={r_no.normalized_score:.3f}, "
+        f"strong-utr={r_strong.normalized_score:.3f}, "
+        f"weak-utr={r_weak.normalized_score:.3f}; "
+        f"5th signal (utr_context_score) added when utr5/utr3 supplied; "
+        f"additive bonus only (never a penalty)"
+    )
+
+
 __all__ = []

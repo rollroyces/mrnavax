@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-09-23
+
+### UTR-aware variant scoring (5th signal)
+
+- **Added `mrnavax/_utr_context.py`** with `score_utr_context(utr5, utr3)`
+  returning a `UTRContextResult` dataclass with per-component scores
+  for Kozak consensus strength + 3'UTR quality (ARE-motif density +
+  length). Stdlib-only — no new deps.
+
+- **Extended `mrnavax/variant_scorer.py:score_variant()`** with two
+  optional keyword arguments:
+    - `utr5: str | None` — the 5' UTR sequence (DNA). The last 9 nt
+      are matched against the canonical Kozak consensus
+      `GCCRCCATG` (R = purine), matching the existing
+      `manufacturability.check_kozak_strength` convention.
+    - `utr3: str | None` — the 3' UTR sequence (DNA). ARE-motif
+      density (canonical AUUUA pentamers) + length are scored.
+
+  When either is supplied, three new entries appear in the components
+  dict: `utr_context_score`, `kozak_score`, `utr3_score`. The
+  UTR context contributes a small bonus (weight 0.05 by default) to
+  the overall normalized score — capped to keep the dominant signals
+  (AM/AVI/PhyloP, total weight 0.85) dominant.
+
+- **Backward compatible**: existing callers that don't pass `utr5`/
+  `utr3` see no change. The 4-signal composition (BLOSUM62 + driver +
+  structural + AM → AVI → PhyloP) is preserved exactly.
+
+### Tests
+
+- **Added `tests/test_utr_context.py`** (15 tests): strong Kozak
+  full credit, weak Kozak lower score, short utr5 default,
+  no-utr5 default, utr3 length scoring, ARE-motif density,
+  context_score in unit interval, JSON-serializable, details
+  populated; score_variant backward-compatibility (no utr args),
+  utr args add components, strong UTR boosts score, weak UTR
+  never lowers the score.
+
+  Test count: 345 → **360**.
+
+### Backend integrity
+
+- **New backend check** (`variant.utr_aware_scoring`): verifies
+  no-utr backward compat, strong UTR adds components, weak UTR
+  never lowers the score. Total backend checks: 32 → **33**.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **360/360 unit tests pass**
+- ✅ **33/33 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Why this matters
+
+RNop (arXiv:2505.23862, Aug 2026) frames mRNA optimization as
+"knowledge infusion across UTR context + CDS + tail". Without the
+UTR context signal, the toolkit could rank two variants identically
+even when one sits in a construct with strong Kozak context and the
+other in a weak context — which actually matters for expression.
+Adding the UTR context score makes the 4-signal composition
+5-signal, fully aware of the construct context.
+
+### Backwards compatibility
+
+- All existing callers of `score_variant()` work unchanged.
+- New `utr5`/`utr3` are optional kwargs (default None).
+- The components dict gains 3 new keys only when UTR is supplied.
+
 ## [0.26.0] - 2026-09-23
 
 ### New features

@@ -571,6 +571,8 @@ def score_variant(
     conservation_lookup: Callable | None = None,
     driver_genes: set[str] | None = None,
     strict: bool = False,
+    utr5: str | None = None,
+    utr3: str | None = None,
 ) -> VariantScore | None:
     """Score a single missense variant.
 
@@ -578,7 +580,7 @@ def score_variant(
     Returns ``None`` for unknown amino acids (silent-mode default) or raises
     ``ValueError`` when ``strict=True``.
 
-    The 4-signal composition:
+    The 5-signal composition (v0.27.0 adds UTR context as a 5th signal):
       * AlphaMissense (Cheng 2023) — dominant for coding variants (0.45)
       * AlphaGenome Atlas AVI (Avsec 2026) — dominant for non-coding
         regulatory variants (0.45)
@@ -586,6 +588,8 @@ def score_variant(
         disruption — always computed, split into the residual weight
       * PhyloP46way conservation (Pollard 2010) — small bonus
         when conservation > 0
+      * UTR context (Kozak + ARE-motif density) — optional bonus,
+        default weight 0.05, only when ``utr5``/``utr3`` supplied
 
     All upstream-model lookups are silent: a network error / None
     return / out-of-range value drops the component without raising.
@@ -642,7 +646,11 @@ def score_variant(
     # ---- Weighted combination ----
     # Priority of dominant signal: AVI > AM > neither. Conservation
     # adds a small bonus when present.
-    raw, components = _combine_components(local, am, avi, cons)
+    utr_ctx = None
+    if utr5 is not None or utr3 is not None:
+        from ._utr_context import score_utr_context
+        utr_ctx = score_utr_context(utr5, utr3)
+    raw, components = _combine_components(local, am, avi, cons, utr_ctx)
 
     # ---- Rationale ----
     rationale_parts = local_rationale(local, gene, wt_aa, mut_aa)
@@ -657,6 +665,11 @@ def score_variant(
         )
     if cons is not None:
         rationale_parts.append(f"PhyloP46way conservation={cons.score:+.3f}")
+    if utr_ctx is not None:
+        rationale_parts.append(
+            f"UTR context={utr_ctx.context_score:.3f} "
+            f"(Kozak={utr_ctx.kozak_score:.3f}, 3'UTR={utr_ctx.utr3_score:.3f})"
+        )
 
     normalized = max(0.0, min(1.0, raw))
     return VariantScore(
@@ -676,14 +689,18 @@ def _combine_components(
     am,
     avi,
     cons,
+    utr_ctx=None,
 ) -> tuple[float, dict]:
-    """Combine the 4 scoring components into a single raw score +
-    components dict.
+    """Combine the 4 (or 5, when ``utr_ctx`` is supplied) scoring
+    components into a single raw score + components dict.
 
     Returns (raw, components). Components dict matches the previous
     contract: BLOSUM62 + driver + hydrophobicity + structural
     disruption always present; AM / AVI / PhyloP entries added when
-    available.
+    available; ``utr_context_score`` added when ``utr_ctx`` is supplied.
+
+    The UTR context contributes a small bonus (weight 0.05) when
+    supplied, capped to keep the dominant signals (AM/AVI) dominant.
     """
     components: dict = {
         "blosum62_score": local.blosum_score,
@@ -706,6 +723,11 @@ def _combine_components(
     if cons is not None:
         components["phylop46way_score"] = cons.score
 
+    if utr_ctx is not None:
+        components["utr_context_score"] = utr_ctx.context_score
+        components["kozak_score"] = utr_ctx.kozak_score
+        components["utr3_score"] = utr_ctx.utr3_score
+
     # Weighted combination. The dominant signal slot takes 0.45;
     # the residual 0.55 is split among the local components plus a
     # small conservation bonus.
@@ -720,6 +742,13 @@ def _combine_components(
     else:
         phylo_boost = 0.0
 
+    # UTR context contribution: small additive bonus when supplied.
+    # Weight 0.05 keeps the dominant signals dominant. Caps the
+    # total raw score at 1.0 via the max() in score_variant().
+    utr_boost = 0.0
+    if utr_ctx is not None:
+        utr_boost = 0.05 * utr_ctx.context_score
+
     local_weighted = (
         0.35 * local.blosum_norm
         + 0.20 * (0.2 if local.driver_gene else 0.0)
@@ -731,13 +760,13 @@ def _combine_components(
 
     if avi is not None and avi.weight > 0:
         # AVI dominates (regulatory-region variant).
-        raw = avi.weight * avi.score + (1.0 - avi.weight) * local_weighted + phylo_boost
+        raw = avi.weight * avi.score + (1.0 - avi.weight) * local_weighted + phylo_boost + utr_boost
     elif am.weight > 0:
         # AlphaMissense dominates (coding-region variant).
-        raw = am.weight * am.score + (1.0 - am.weight) * local_weighted + phylo_boost
+        raw = am.weight * am.score + (1.0 - am.weight) * local_weighted + phylo_boost + utr_boost
     else:
-        # Neither AVI nor AM — local-only weighted combination + PhyloP.
-        raw = local_weighted + phylo_boost
+        # Neither AVI nor AM — local-only weighted combination + PhyloP + UTR.
+        raw = local_weighted + phylo_boost + utr_boost
 
     return raw, components
 

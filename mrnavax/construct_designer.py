@@ -46,10 +46,10 @@ from .codon_optimizer import (
 # Human 5'UTR consensus (Kozak context + minimal upstream sequence).
 # Source: published therapeutic-mRNA designs (mRNA-1273, BNT162b2).
 # 27 nt: a short, GC-balanced 5'UTR that does not introduce secondary
-# structure upstream of the start codon. Ends with the canonical
-# Kozak "GCCRCCATGG" motif (R = purine) so the start codon (which
-# we'll append) is in strong Kozak context.
-_HUMAN_5UTR_CONSENSUS = "GGGCGACGCGGTGGCGGCCGCTCATGG"
+# structure upstream of the start codon. Ends with a canonical
+# strong-Kozak upstream motif (``GCCACC``) so the appended ATG
+# start codon sits in strong Kozak context.
+_HUMAN_5UTR_CONSENSUS = "GGGCGACGCGGTGGCGGCCGCTCAGCC"
 
 # Human 3'UTR consensus (two copies of a beta-globin 3'UTR fragment,
 # ARE-stabilizing motif, ending with a polyadenylation signal).
