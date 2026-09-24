@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-09-24
+
+### Module export hygiene
+
+- **Added `__all__` exports** to:
+    - `mrnavax/manufacturability.py` (10 public symbols)
+    - `mrnavax/codon_ribodecode_adapter.py` (13 public symbols)
+- **Added docstring** to `mrnavax/manufacturability.py:_skip`
+  explaining its role as a "skipped" CheckResult sentinel.
+- No behavior changes — purely API hygiene.
+
+### Why these two
+
+These were the two remaining large modules flagged in the v0.24
+review ("Apply ≠ rewrite"). They are the public surface for two
+of the nine tools (manufacture + codon), and their public symbols
+were discoverable only by source inspection. With `__all__`,
+`from mrnavax.manufacturability import *` now does the right
+thing, and IDEs / type checkers can verify the export contract.
+
+### Tests
+
+- 360/360 tests pass (no new tests; this is hygiene-only).
+- 33/33 backend checks pass.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ twine check PASSED
+
+### Skipped (per simplify-code: Apply ≠ rewrite)
+
+- Forcing `__all__` onto the remaining ~20 modules would be a
+  rewrite, not cleanup. They remain as-is. If you want to add
+  `__all__` systematically, it should be a separate, dedicated
+  pass with explicit user approval.
+
 ## [0.27.0] - 2026-09-23
 
 ### UTR-aware variant scoring (5th signal)

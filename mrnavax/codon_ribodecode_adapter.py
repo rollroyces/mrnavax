@@ -489,3 +489,20 @@ def select_codon_optimizer(
     if ribo_decode_available():
         return RiboDecodeCLIAdapter()
     return MockCodonOptimizer()
+
+
+__all__ = [
+    "RIBO_DECODE_BIN",
+    "RiboDecodeError",
+    "RiboDecodeNotInstalled",
+    "RiboDecodeRequest",
+    "RiboDecodeResult",
+    "pred_translation_available",
+    "ribo_decode_available",
+    "TranslationModelCLIAdapter",
+    "MockTranslationPredictor",
+    "RiboDecodeCLIAdapter",
+    "MockCodonOptimizer",
+    "select_translation_predictor",
+    "select_codon_optimizer",
+]

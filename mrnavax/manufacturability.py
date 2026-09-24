@@ -536,6 +536,12 @@ def score_manufacturability(
 
 
 def _skip(name: str) -> CheckResult:
+    """Build a no-op CheckResult for checks where input was not provided.
+
+    Used by ``score_manufacturability`` to return a structured "skipped"
+    result rather than skipping the check silently — keeps the report
+    layout uniform across run / skip / fail.
+    """
     return CheckResult(
         name=name,
         pass_=True,
@@ -544,3 +550,18 @@ def _skip(name: str) -> CheckResult:
         summary="skipped (no input provided)",
         details={},
     )
+
+
+__all__ = [
+    "CheckResult",
+    "ManufacturabilityReport",
+    "check_poly_a_runs",
+    "check_gc_5prime_hairpin",
+    "check_are_motif",
+    "check_kozak_strength",
+    "check_stop_context",
+    "check_hidden_stops",
+    "check_gc_window_uniformity",
+    "check_cpg_balance",
+    "score_manufacturability",
+]
