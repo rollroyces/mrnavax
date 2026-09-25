@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-09-25
+
+### UTR-aware CDS designer (10th tool)
+
+- **New tool: `mrnavax.utr_designer`** — coupled 5'UTR + CDS + 3'UTR
+  design for max expression. Bridges the v0.27.0 UTR context scorer
+  (Kozak + 3'UTR quality) with the v0.25.0 multi-objective CDS
+  optimizer (RNop knowledge-infused loss pattern).
+  - `design_utr_aware_cds(cfg)` returns a `UTRDesignResult` dataclass
+    with chosen UTR5 / UTR3 / CDS + per-component scores.
+  - 12-candidate bounded grid search over 4 5'UTR variants × 3 3'UTR
+    variants.
+  - Combined score: 0.4 × UTR context + 0.6 × CDS.
+  - Per-axis thresholds (`prefer_kozak`, `prefer_utr3`) filter
+    candidates; falls back to the highest-ranked if none pass.
+  - CLI: `mrnavax utr-design --protein my_protein.fasta`
+
+- **New CLI subcommand: `mrnavax utr-design`** — the 10th tool
+  in the toolkit.
+
+### Atlas API key activation infrastructure (separate from this release)
+
+- **New: `scripts/check_atlas_activation.py`** — verification
+  script that runs locally after adding the GitHub secret to confirm
+  end-to-end Atlas connectivity. Tests helper-file key resolution,
+  alphagenome package install, live BRAF V600E call, and fixture
+  comparison.
+
+- **New: `docs/operations/atlas-activation.md`** + zh-Hant +
+  zh-Hans — three-locale documentation of the three Atlas activation
+  paths (helper file, GitHub secret, env var).
+
+- **Important note on Atlas activation**: as of v0.30.0 the GitHub
+  Actions secret `ALPHAGENOME_API_KEY` is NOT yet configured at
+  the repo level (`gh secret list` returns empty). The local
+  helper file `~/projects/alphagenome-work/.alphagenome_key` works
+  for local development, but GitHub Actions runners cannot read it.
+  The weekly Atlas cron is currently skipping with the "ALPHAGENOME_API_KEY
+  not configured" notice. To enable real Atlas coverage:
+  https://github.com/rollroyces/mrnavax/settings/secrets/actions/new
+
+### Tests
+
+- **15 new tests** in `tests/test_utr_designer.py`:
+  - UTRDesignConfig defaults (2)
+  - Candidate library shape (2)
+  - design_utr_aware_cds core (8): basic design, score bounds,
+    candidates count, ranking length, ranking sort, minimal library,
+    basic backend, strict thresholds, strong Kozak chosen, eGFP
+    fragment
+  - UTRDesignResult dataclass (1)
+- Test count: 372 → **387**.
+
+### Backend integrity
+
+- **New backend check** (`utr_designer.coupled_design`): verifies
+  field population, valid DNA, CDS length = 3 × AA length, scores
+  in [0, 1], ranking length 12, ranking sorted descending, strong
+  Kozak in top 3.
+- Total backend checks: 34 → **35**.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **35/35 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ twine check PASSED
+
+### Cumulative (v0.1.0 → v0.30.0)
+
+- **18 substantial releases shipped in 6 days**
+- **10 tools** (codon, neoantigen, trial, lnp, scrna, manufacture,
+  spatial, variant-regulatory, construct, utr-design)
+- **12 real-model adapters** behind Protocol contracts
+- **387 unit tests, 35 backend integrity checks**
+- **3 documentation locales** (en + 繁體中文 + 简体中文)
+
 ## [0.29.0] - 2026-09-24
 
 ### Public-API refinements (additive, backward compatible)

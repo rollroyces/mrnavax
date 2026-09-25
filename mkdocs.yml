@@ -126,9 +126,12 @@ nav:
       - manufacture: tools/manufacture.md
       - spatial: tools/spatial.md
       - construct: tools/construct.md
+      - utr-design: tools/utr-design.md
   - Backends: backends.md
   - Case studies:
       - Variant prioritization: case-studies/variant-prioritization.md
+  - Operations:
+      - Atlas API key activation: operations/atlas-activation.md
   - API reference: api.md
   - Contributing: contributing.md
   - Changelog: changelog.md

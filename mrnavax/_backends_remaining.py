@@ -490,4 +490,79 @@ def _check_score_variant_inputs_dataclass() -> tuple[bool, str]:
     )
 
 
+@register("utr_designer.coupled_design")
+def _check_utr_designer() -> tuple[bool, str]:
+    """UTR-aware CDS design (v0.30.0, 10th tool).
+
+    Verifies:
+      * design_utr_aware_cds() returns a UTRDesignResult with all
+        expected fields populated.
+      * The chosen UTR5 + UTR3 are valid DNA strings (no U's, A/T/C/G only).
+      * The CDS length = 3 × len(input_protein).
+      * The combined_score is in [0, 1].
+      * The ranking has 12 entries (4 5'UTR × 3 3'UTR combinations).
+      * The top-ranked combination has the highest combined_score.
+      * Strong-Kozak 5'UTR variants are preferred when available
+        (consistent with the manufacturing literature).
+    """
+    from .utr_designer import (
+        UTRDesignConfig,
+        design_utr_aware_cds,
+    )
+
+    cfg = UTRDesignConfig(cds="MVSKGEELFTGV")
+    result = design_utr_aware_cds(cfg)
+
+    # Field population
+    assert isinstance(result.utr5, str) and len(result.utr5) > 0
+    assert isinstance(result.utr3, str) and len(result.utr3) > 0
+    assert isinstance(result.cds_dna, str)
+    assert len(result.cds_dna) == 3 * len(cfg.cds), (
+        f"CDS must be 3 × len(AA): got {len(result.cds_dna)} for "
+        f"{len(cfg.cds)} AA"
+    )
+    assert result.protein == cfg.cds
+
+    # Valid DNA
+    valid_bases = set("ATCG")
+    assert all(c in valid_bases for c in result.utr5.upper()), (
+        f"utr5 contains non-DNA bases: {result.utr5}"
+    )
+    assert all(c in valid_bases for c in result.utr3.upper()), (
+        f"utr3 contains non-DNA bases: {result.utr3}"
+    )
+    assert all(c in valid_bases for c in result.cds_dna.upper())
+
+    # Scores in [0, 1]
+    assert 0.0 <= result.combined_score <= 1.0
+    assert 0.0 <= result.cds_score <= 1.0
+
+    # Ranking
+    assert len(result.ranking) == 12, (
+        f"ranking must have 12 entries (4 UTR5 × 3 UTR3), got {len(result.ranking)}"
+    )
+    scores = [r[0] for r in result.ranking]
+    assert scores == sorted(scores, reverse=True), "ranking must be sorted descending"
+
+    # Top-ranked is the chosen one (or one of the top)
+    top_score = result.ranking[0][0]
+    assert abs(result.combined_score - top_score) < 0.01, (
+        f"chosen combined_score {result.combined_score} != top-ranked {top_score}"
+    )
+
+    # Strong-Kozak in top-3
+    top3_names = {name for _, name, _ in result.ranking[:3]}
+    assert "strong_kozak" in top3_names, (
+        f"strong_kozak should be in top 3; got {top3_names}"
+    )
+
+    return True, (
+        f"UTR-aware design OK: chose {result.utr5[:15]}... + "
+        f"{result.utr3[:15]}...; CDS={len(result.cds_dna)} nt, "
+        f"score={result.cds_score:.3f}, combined={result.combined_score:.3f}; "
+        f"12 candidates evaluated, ranking sorted descending; "
+        f"strong_kozak in top 3"
+    )
+
+
 __all__ = []

@@ -1,12 +1,12 @@
 # mrnavax
 
 > Practical Python tools for the AI-leverage layers in mRNA cancer therapy.
-> Stdlib-only core, eight runnable tools, ten real-model adapters behind
-> Protocol contracts, three documentation locales, 360 tests, 33 backend
+> Stdlib-only core, ten runnable tools, twelve real-model adapters behind
+> Protocol contracts, three documentation locales, 387 tests, 35 backend
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.29.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.30.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -60,7 +60,7 @@ flowchart LR
     TRIAL -.eligibility.-> PT
 ```
 
-## The eight tools
+## The ten tools
 
 | Tool | What it does | AI leverage layer | Reference work integrated |
 |---|---|---|---|
@@ -73,6 +73,7 @@ flowchart LR
 | `spatial` | STModule spatial-transcriptomics tissue-module identification | Spatial transcriptomics | STModule (Wang et al., *Genome Medicine* 2025) |
 | `variant-regulatory` | AlphaGenome Atlas AVI score for non-coding regulatory variants | Variant prioritization | AlphaGenome Atlas (Avsec et al., *Nature* 2026) |
 | `construct` | Full mRNA construct assembly (5'UTR + CDS + 3'UTR + poly-A) from a protein AA sequence | Therapeutic-mRNA design | mRNA-1273 / BNT162b2 consensus UTRs; multi-objective CDS optimizer (v0.25.0 RNop pattern) |
+| `utr-design` | Coupled 5'UTR + CDS + 3'UTR design: bounded grid search over 12 UTR candidates, picks the highest joint context score | Therapeutic-mRNA design (UTR × CDS coupling) | v0.27.0 UTR context scorer + v0.25.0 multi-objective CDS optimizer (RNop knowledge-infused loss) |
 
 **Real-model adapters behind Protocol contracts** (opt-in via `pip install` extras):
 

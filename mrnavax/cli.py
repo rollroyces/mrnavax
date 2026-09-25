@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .alphagenome_integration import score_variants_from_csv
 from .codon_optimizer import _run_cli as codon_run
+from .construct_designer import _read_fasta_single
 from .lnp_advisor import _run_cli as lnp_run
 from .manufacturability import score_manufacturability
 from .neoantigen_screener import _run_cli as neo_run
@@ -25,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="mrnavax",
         description="mRNA × AI toolkit "
-        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial / construct)",
+        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial / construct / utr-design)",
     )
     sub = p.add_subparsers(dest="tool", required=True)
 
@@ -50,6 +51,11 @@ def main(argv: list[str] | None = None) -> int:
         help="compose a full mRNA construct (5'UTR + CDS + 3'UTR + poly-A) "
         "from a protein amino-acid sequence",
     )
+    sub.add_parser(
+        "utr-design",
+        help="coupled 5'UTR + CDS + 3'UTR design for max expression "
+        "(10th tool, v0.30.0)",
+    )
 
     args, rest = p.parse_known_args(argv)
     runners = {
@@ -67,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
         return _variant_regulatory_run(rest)
     if args.tool == "construct":
         return _construct_run(rest)
+    if args.tool == "utr-design":
+        return _utr_design_run(rest)
     return runners[args.tool](rest)
 
 
@@ -267,11 +275,7 @@ def _variant_regulatory_run(argv: list[str]) -> int:
 
 def _construct_run(argv: list[str]) -> int:
     """CLI for the mRNA construct designer (5'UTR + CDS + 3'UTR + poly-A)."""
-    from .construct_designer import (
-        ConstructConfig,
-        _read_fasta_single,
-        design_construct,
-    )
+    from .construct_designer import ConstructConfig, design_construct
 
     p = argparse.ArgumentParser(prog="mrnavax construct")
     p.add_argument(
@@ -318,6 +322,78 @@ def _construct_run(argv: list[str]) -> int:
         return 2
 
     out_text = _json.dumps(result.to_dict(), indent=2)
+    if args.out:
+        Path(args.out).write_text(out_text + "\n")
+    print(out_text)
+    return 0
+
+
+def _utr_design_run(argv: list[str]) -> int:
+    """CLI for the v0.30.0 UTR-aware CDS designer (10th tool)."""
+    p = argparse.ArgumentParser(prog="mrnavax utr-design")
+    p.add_argument(
+        "--protein",
+        required=True,
+        help="Protein amino-acid sequence (FASTA file or raw string)",
+    )
+    p.add_argument(
+        "--prefer-kozak", type=float, default=0.7,
+        help="Minimum Kozak score threshold (default: 0.7)",
+    )
+    p.add_argument(
+        "--prefer-utr3", type=float, default=0.5,
+        help="Minimum 3'UTR score threshold (default: 0.5)",
+    )
+    p.add_argument(
+        "--library",
+        choices=["all", "minimal"],
+        default="all",
+        help="UTR candidate library (default: all = 12 combinations)",
+    )
+    p.add_argument(
+        "--backend",
+        choices=["multi-objective", "basic"],
+        default="multi-objective",
+        help="CDS optimization backend (default: multi-objective, the SOTA pattern)",
+    )
+    p.add_argument(
+        "--out", default=None,
+        help="Write JSON report here (default: stdout)",
+    )
+    args = p.parse_args(argv)
+
+    raw = Path(args.protein).read_text() if Path(args.protein).exists() else args.protein
+    protein = _read_fasta_single(raw)
+    if not protein:
+        print("error: empty protein sequence", file=sys.stderr)
+        return 2
+
+    from .utr_designer import UTRDesignConfig, design_utr_aware_cds
+
+    cfg = UTRDesignConfig(
+        cds=protein,
+        prefer_kozak=args.prefer_kozak,
+        prefer_utr3=args.prefer_utr3,
+        library=args.library,
+        backend=args.backend,
+    )
+    result = design_utr_aware_cds(cfg)
+
+    report = {
+        "utr5": result.utr5,
+        "utr3": result.utr3,
+        "cds_dna": result.cds_dna,
+        "protein": result.protein,
+        "cds_score": result.cds_score,
+        "combined_score": result.combined_score,
+        "candidates_evaluated": result.candidates_evaluated,
+        "utr_context": result.utr_context.to_dict(),
+        "ranking_top3": [
+            {"combined": s, "utr5": u5, "utr3": u3}
+            for s, u5, u3 in result.ranking[:3]
+        ],
+    }
+    out_text = _json.dumps(report, indent=2)
     if args.out:
         Path(args.out).write_text(out_text + "\n")
     print(out_text)
