@@ -76,7 +76,7 @@ jobs:
           # with --tolerance. mode=record writes the response to
           # tests/fixtures/ for review.
           MODE="${{ github.event.inputs.mode || 'regression' }}"
-          BASELINE="${{ github.event.inputs.baseline || '0.72' }}"
+          BASELINE="${{ github.event.inputs.baseline || '1.0' }}"
           TOLERANCE="${{ github.event.inputs.tolerance || '0.05' }}"
           ARGS="--mode ${MODE} --baseline ${BASELINE} --tolerance ${TOLERANCE}"
           if [ "${MODE}" = "record" ]; then

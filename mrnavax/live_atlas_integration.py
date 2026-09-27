@@ -21,7 +21,7 @@ CLI::
     python -m mrnavax.live_atlas_integration --mode record \
         --output tests/fixtures/alphagenome_atlas_live.json
     python -m mrnavax.live_atlas_integration --mode regression \
-        --baseline 0.72 --tolerance 0.05
+        --baseline 1.0 --tolerance 0.05
 
 The script exits 0 on pass, 1 on failure — so the workflow's
 ``exit 1`` semantic catches failures cleanly.
