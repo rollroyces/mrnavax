@@ -54,8 +54,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install mrnavax
-        run: pip install -e .
+      - name: Install mrnavax with the variant-alphagenome extra
+        # The live Atlas call requires the [variant-alphagenome] extra
+        # which pulls in alphagenome + torch + numpy. Without this the
+        # live step fails with "alphagenome package not installed".
+        run: pip install -e '.[variant-alphagenome]'
 
       - name: Run mock-mode smoke
         # Always pass: confirms the harness CLI works end-to-end before
