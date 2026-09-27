@@ -127,6 +127,7 @@ nav:
       - spatial: tools/spatial.md
       - construct: tools/construct.md
       - utr-design: tools/utr-design.md
+      - predict: tools/predict.md
   - Backends: backends.md
   - Case studies:
       - Variant prioritization: case-studies/variant-prioritization.md

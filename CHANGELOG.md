@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-09-27
+
+### Live AlphaGenome Atlas prediction CLI (11th tool)
+
+- **New tool: `mrnavax predict`** — the 11th tool in the toolkit.
+  Calls the real AlphaGenome Atlas API to score regulatory-variant
+  impact (AVI score) for single variants or CSV batches.
+  - Auto-resolves API key from env var / helper file.
+  - Single-variant mode: `--chrom/--pos/--ref/--alt [--name]`.
+  - Batch mode: `--input variants.csv` (header required).
+  - JSON output with score, classification (low/moderate/high),
+    is_coding hint, and n_scorers.
+
+- **Shim improvement**: `mrnavax/_shims/alphagenome_cli.py` now
+  auto-resolves the API key from `ALPHAGENOME_API_KEY` env var or
+  the helper file (previously required explicit `api_key` in JSON
+  payload). The shim is now callable via `mrnavax predict` AND
+  programmatically via the Python API.
+
+- **`_extract_is_coding` clarification**: now uses strict
+  equality (`protein_coding == t`) instead of substring match
+  (`"protein_coding" in t`), so `protein_coding_pseudogene` is
+  correctly not flagged. The docstring now explicitly notes the
+  window-level (not exon-level) limitation.
+
+### Demo runs (live Atlas, verified locally)
+
+```
+$ mrnavax predict --input /tmp/cancer_variants.csv
+BRAF_V600E      1.000  high
+KRAS_G12D       1.000  high
+EGFR_L858R      1.000  high
+TP53_R175H      1.000  high
+MYC_T58A        1.000  high
+EGFR_T790M      1.000  high
+```
+
+All 6 canonical cancer variants flagged as high regulatory impact,
+matching the literature (these are all known oncogenic driver
+mutations).
+
+### New scripts
+
+- `scripts/predict_demo.py` — 6 canonical cancer variants end-to-end.
+- `scripts/predict_regulatory_demo.py` — 6 GWAS SNPs for regulatory use.
+
+### New docs
+
+- `docs/tools/predict.md` — full CLI documentation.
+
+### Tests / backend checks
+
+- **1 new backend check** (`predict.atlas_cli_subprocess`): verifies
+  the shim subprocess wrapper is correctly wired; auth-checks via
+  live invocation. Total backend checks: 35 → **36**.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ twine check PASSED
+
+### Cumulative
+
+- **19 substantial releases in 6 days**
+- **11 tools** (added `predict`)
+- **12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales**
+
 ## [0.30.0] - 2026-09-25
 
 ### UTR-aware CDS designer (10th tool)

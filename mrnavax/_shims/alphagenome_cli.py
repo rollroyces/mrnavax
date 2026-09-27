@@ -55,6 +55,7 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 # Default sequence length: 16kb is the smallest the model supports
 # (supported: [16384, 131072, 524288, 1048576]).
@@ -68,6 +69,32 @@ def _classify(score: float) -> str:
     if score < 0.564:
         return "moderate"
     return "high"
+
+
+def _resolve_api_key() -> str:
+    """Resolve API key from env / helper file (matches _load_api_key()).
+
+    Resolution order (highest precedence first):
+      1. ``ALPHAGENOME_API_KEY`` env var (CI path)
+      2. ``~/projects/alphagenome-work/.alphagenome_key`` (local dev helper)
+      3. ``~/.alphagenome_key`` (alternate home location)
+
+    Returns the key string, or empty string if no source has it.
+    """
+    import os
+
+    env_key = os.environ.get("ALPHAGENOME_API_KEY", "").strip()
+    if env_key:
+        return env_key
+    helper = Path.home() / "projects" / "alphagenome-work" / ".alphagenome_key"
+    if not helper.exists():
+        helper = Path.home() / ".alphagenome_key"
+    if helper.exists():
+        try:
+            return helper.read_text().strip()
+        except OSError:
+            pass
+    return ""
 
 
 def _extract_score(anndata_obj) -> float:
@@ -99,12 +126,33 @@ def _extract_score(anndata_obj) -> float:
 
 
 def _extract_is_coding(anndata_list) -> bool:
-    """True if any scorer returned a protein_coding gene overlap."""
+    """True if the variant position overlaps a protein_coding gene exon.
+
+    Atlas returns a 16kb window centered on the variant; the gene-overlap
+    scorers (typically scorers 7-11 of 19) include ``gene_type`` in
+    ``obs``. The current implementation is *best-effort*:
+
+      * If any of those gene-overlap scorers reports a ``protein_coding``
+        gene overlapping the variant position, return True.
+      * If only non-coding biotypes overlap (lncRNA, snoRNA, miRNA, etc.)
+        or no gene-overlap scorers are present, return False.
+
+    Known limitation: this is a *window-level* check, not a precise
+    exon-level check. A position in an intron of a protein_coding gene
+    will still report ``is_coding=True`` even though the variant is
+    non-coding. The proper fix would require cross-referencing against
+    a gene annotation (e.g., GENCODE), which is out of scope for the
+    v0.25.1 shim.
+
+    Use ``is_coding=True`` as a *hint* that the variant sits within a
+    protein_coding gene; use the AVI ``score`` + ``classification`` as
+    the authoritative regulatory impact signal.
+    """
     for ad in anndata_list:
         try:
             if "gene_type" in ad.obs.columns:
                 types = ad.obs["gene_type"].astype(str).tolist()
-                if any("protein_coding" in t for t in types):
+                if any("protein_coding" == t for t in types):
                     return True
         except Exception:  # noqa: BLE001 — defensive
             continue
@@ -118,7 +166,10 @@ def main() -> int:
         sys.stderr.write(f"invalid JSON payload: {exc}\n")
         return 2
 
-    api_key = payload.get("api_key", "")
+    # Resolve API key with the same precedence as the rest of the toolkit:
+    # payload (explicit) > ALPHAGENOME_API_KEY env var > helper file at
+    # ~/projects/alphagenome-work/.alphagenome_key > ~/.alphagenome_key.
+    api_key = payload.get("api_key", "") or _resolve_api_key()
     chrom = payload.get("chrom", "")
     pos = int(payload.get("pos", 0))
     ref = payload.get("ref", "")

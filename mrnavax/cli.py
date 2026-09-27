@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv as _csv
 import json as _json
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="mrnavax",
         description="mRNA × AI toolkit "
-        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial / construct / utr-design)",
+        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial / construct / utr-design / predict)",
     )
     sub = p.add_subparsers(dest="tool", required=True)
 
@@ -56,6 +57,11 @@ def main(argv: list[str] | None = None) -> int:
         help="coupled 5'UTR + CDS + 3'UTR design for max expression "
         "(10th tool, v0.30.0)",
     )
+    sub.add_parser(
+        "predict",
+        help="live AlphaGenome Atlas regulatory-variant prediction "
+        "(11th tool, v0.31.0)",
+    )
 
     args, rest = p.parse_known_args(argv)
     runners = {
@@ -75,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
         return _construct_run(rest)
     if args.tool == "utr-design":
         return _utr_design_run(rest)
+    if args.tool == "predict":
+        return _predict_run(rest)
     return runners[args.tool](rest)
 
 
@@ -399,6 +407,127 @@ def _utr_design_run(argv: list[str]) -> int:
     print(out_text)
     return 0
 
+
+
+
+def _predict_run(argv: list[str]) -> int:
+    """CLI for live AlphaGenome Atlas variant prediction (11th tool).
+
+    Calls the shim at ``mrnavax/_shims/alphagenome_cli.py`` to score
+    one or more variants against the real Atlas API. Auto-resolves the
+    API key from env var / helper file (matches the rest of the
+    toolkit). Supports a single variant via --chrom/--pos/--ref/--alt
+    or a batch via --input <csv>.
+    """
+    import subprocess
+
+    p = argparse.ArgumentParser(
+        prog="mrnavax predict",
+        description="Live AlphaGenome Atlas regulatory-variant prediction "
+        "(11th tool). Requires ALPHAGENOME_API_KEY or the helper file.",
+    )
+    p.add_argument("--chrom", help="Chromosome (e.g. chr7). Required for single-variant mode.")
+    p.add_argument("--pos", type=int, help="1-based position (hg38).")
+    p.add_argument("--ref", help="Reference allele (single base).")
+    p.add_argument("--alt", help="Alternate allele (single base).")
+    p.add_argument(
+        "--input",
+        help="CSV file with columns chrom,pos,ref,alt (header required). "
+        "Batch mode; one call per row.",
+    )
+    p.add_argument(
+        "--name", default=None,
+        help="Optional label for single-variant mode (default: chrom:pos ref>alt)",
+    )
+    p.add_argument(
+        "--out", default=None,
+        help="Write JSON report here (default: stdout)",
+    )
+    args = p.parse_args(argv)
+
+    if not args.input and not (args.chrom and args.pos and args.ref and args.alt):
+        print(
+            "error: provide either --input <csv> OR all of "
+            "--chrom/--pos/--ref/--alt",
+            file=sys.stderr,
+        )
+        return 2
+
+    shim_path = Path(__file__).resolve().parent / "_shims" / "alphagenome_cli.py"
+    if not shim_path.exists():
+        print(f"error: shim not found at {shim_path}", file=sys.stderr)
+        return 3
+
+    if args.input:
+        rows = []
+        with open(args.input) as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                rows.append(row)
+    else:
+        rows = [{
+            "chrom": args.chrom,
+            "pos": str(args.pos),
+            "ref": args.ref,
+            "alt": args.alt,
+            "name": args.name or f"{args.chrom}:{args.pos} {args.ref}>{args.alt}",
+        }]
+
+    results = []
+    for row in rows:
+        payload_dict = {
+            "chrom": row["chrom"],
+            "pos": int(row["pos"]),
+            "ref": row["ref"],
+            "alt": row["alt"],
+        }
+        proc = subprocess.run(
+            [sys.executable, str(shim_path)],
+            input=_json.dumps(payload_dict),
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if proc.returncode != 0:
+            results.append({
+                "name": row.get("name"),
+                "chrom": row["chrom"],
+                "pos": int(row["pos"]),
+                "ref": row["ref"],
+                "alt": row["alt"],
+                "error": proc.stderr.strip(),
+            })
+            continue
+        try:
+            data = _json.loads(proc.stdout)
+        except _json.JSONDecodeError:
+            results.append({
+                "name": row.get("name"),
+                "chrom": row["chrom"],
+                "pos": int(row["pos"]),
+                "ref": row["ref"],
+                "alt": row["alt"],
+                "error": "bad JSON from shim",
+            })
+            continue
+        results.append({
+            "name": row.get("name"),
+            "chrom": row["chrom"],
+            "pos": int(row["pos"]),
+            "ref": row["ref"],
+            "alt": row["alt"],
+            "score": data.get("score"),
+            "classification": data.get("classification"),
+            "is_coding": data.get("is_coding"),
+            "n_scorers": data.get("n_scorers"),
+        })
+
+    report = {"n_variants": len(results), "results": results}
+    out_text = _json.dumps(report, indent=2)
+    if args.out:
+        Path(args.out).write_text(out_text + "\n")
+    print(out_text)
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())
