@@ -30,7 +30,7 @@ on:
       baseline:
         description: "Baseline AVI score (regression mode)"
         required: false
-        default: "0.72"
+        default: "1.0"
         type: string
       tolerance:
         description: "Maximum absolute delta tolerated"
