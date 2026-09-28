@@ -6,7 +6,7 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.1-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.2-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -48,6 +48,12 @@
 <details>
 <summary><strong>What you get — a 60-second overview</strong></summary>
 
+> **▶ Watch the demo (5s):** the real `python examples/run_all.py` output, line-by-line:
+>
+> <video src="./docs/assets/mrnavax_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/mrnavax_demo.gif" alt="mrnavax end-to-end demo output — typewriter-style 5-second loop showing all 11 tools">
+> </video>
+
 ```text
 mrnavax end-to-end demo (mock mode)
 
@@ -65,8 +71,8 @@ mrnavax end-to-end demo (mock mode)
 
 ```
 
-All 11 tools, ~30 seconds, zero model downloads. `predict` upgrades
-to a live Atlas call when an API key is configured.
+All 11 tools, ~30 seconds of real runtime, zero model downloads. `predict`
+upgrades to a live Atlas call when an API key is configured.
 
 </details>
 

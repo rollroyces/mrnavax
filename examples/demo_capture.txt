@@ -1,0 +1,15 @@
+mrnavax end-to-end demo (mock mode)
+
+  codon                        CAI=0.720, n_codons=169
+  neoantigen                   8 candidates, 0 binders
+  trial                        top-1 = NCT00000003
+  lnp                          target=lung, cargo=sarna
+  scrna                        10 cells × 9 genes, 4 clusters (tumor=3)
+  manufacture                  score=0.887, 7 pass / 8 total
+  spatial                      10 tissue modules
+  construct                    384 nt, CAI=0.887
+  utr-design                   combined=0.807
+  variant-regulatory           6 variants, 6 high-impact
+  predict                      score=1.000, classification=high
+
+Done. Sample outputs committed under examples/sample_outputs/.

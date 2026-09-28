@@ -64,7 +64,7 @@ def _check_alphagenome_package() -> bool:
             "Install with: pip install 'mrnavax[variant-alphagenome]'"
         )
         return False
-    print(f"[package] alphagenome installed")
+    print("[package] alphagenome installed")
     return True
 
 

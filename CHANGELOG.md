@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.2] - 2026-09-28
+
+### 5-second demo video — real `examples/run_all.py` output rendered to MP4
+
+- New: ``docs/assets/mrnavax_demo.mp4`` (66 KB, 5s, 1280×720 @ 30 fps)
+- New: ``docs/assets/mrnavax_demo.gif`` (208 KB, looping)
+- New: ``scripts/render_demo_video.py`` — PIL + ffmpeg pipeline that
+  renders captured demo text line-by-line on a styled terminal canvas
+  with blinking cursor and color-coded tool names. Reproducible: any
+  future change to the demo output is one ``render`` command away.
+- New: ``examples/demo_capture.txt`` — reference text used to render
+  the current video. Regenerate via:
+
+  ```bash
+  MRNA_AI_FORCE_MOCK=1 python examples/run_all.py > examples/demo_capture.txt
+  python scripts/render_demo_video.py examples/demo_capture.txt docs/assets/mrnavax_demo.mp4
+  ffmpeg -y -i docs/assets/mrnavax_demo.mp4 \
+      -vf "fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+      -loop 0 docs/assets/mrnavax_demo.gif
+  ```
+
+### README — embedded video at the top
+
+- Added ``<video>`` element inside the ``What you get — a 60-second
+  overview`` collapsible block. The MP4 is the primary asset, the GIF
+  is the fallback for clients that don't render ``<video>`` (most
+  Markdown renderers strip HTML, so the README also keeps the
+  text-only output block right below for raw-markdown readers).
+
+### Video rendering details
+
+- Styling matches the existing README design language: deep navy
+  ``#101a2e`` background, monospace font, accent cyan for headers,
+  yellow for the live ``predict`` row and the final ``Done.`` line.
+- Typewriter pacing: 7 frames per line (~0.23s) at 30 fps.
+- Blinking cyan cursor at the bottom of the visible-line region.
+- Title bar with traffic-light circle (no buttons — fake terminal).
+- Final state held for 45 frames (1.5s) so the eye can read the
+  summary.
+
+### Quality gates
+
+- ✅ ruff clean (was 1 hidden F841 — removed)
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Cumulative
+
+- **24 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales** (en + 繁體中文 + 简体中文)
+- **First release with an embedded demo video**
+
 ## [0.34.1] - 2026-09-28
 
 ### README UX overhaul
