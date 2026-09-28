@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-09-28
+
+### Deprecation cycle begins: score_variant() kwargs API
+
+- **`score_variant()` now emits `DeprecationWarning`** when called with
+  the legacy 14-kwarg signature. Use ``score_variant_from_inputs(
+  VariantInputs(...))`` instead. The kwargs API will be **removed in
+  v0.34.0** (one full minor-version deprecation window).
+  - Stack level 2 → warning points at the caller, not the function
+    definition.
+  - Default Python filter dedupes by (source-location, message), so
+    it fires once per call site, not per call.
+- ``VariantInputs.from_kwargs()`` and ``score_variant_from_inputs()``
+  remain unchanged and are the recommended forward API (added in
+  v0.29.0).
+
+### Documentation i18n: 4 new translations
+
+- New: ``docs/tools/predict.zh-Hant.md`` + ``.zh-Hans.md``
+  (11th tool — live Atlas regulatory-variant prediction).
+- New: ``docs/tools/utr-design.zh-Hant.md`` + ``.zh-Hans.md``
+  (10th tool — coupled 5\'UTR + CDS + 3\'UTR design).
+- All 11 tools now have full 3-locale documentation coverage.
+- mkdocs-static-i18n reports "Translated 16 navigation elements"
+  for both zh-Hant and zh-Hans (up from 14 pre-v0.32.0).
+
+### Module export hygiene (continued from v0.28.0)
+
+- Added ``__all__`` to ``mrnavax/variant_scorer.py`` (12 public symbols).
+  Completes the v0.28.0 ``__all__`` pass — all three largest public-surface
+  modules (``manufacturability``, ``codon_ribodecode_adapter``,
+  ``variant_scorer``) now have explicit public exports.
+
+### variant_scorer.py split: explicitly NOT done
+
+- Audit completed on the 996-line module: ~51% of lines are the
+  static BLOSUM62 reference matrix; the rest (``score_variant``,
+  ``_combine_components``, ``VariantInputs``, ``VariantScore``,
+  ``filter_variants``, secondary-structure helpers) is a cohesive
+  unit with tight internal coupling.
+- The "right split" was already done in v0.22.0 (``_scoring_components``
+  + ``_scoring_lookups`` extracted). Splitting further would be a
+  rewrite, not cleanup — explicitly skipped per the simplify-code
+  principle ("Apply ≠ rewrite").
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean (16 nav elements per locale)
+
+### Cumulative
+
+- **20 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales** (en + 繁體中文 + 简体中文)
+
 ## [0.31.0] - 2026-09-27
 
 ### Live AlphaGenome Atlas prediction CLI (11th tool)

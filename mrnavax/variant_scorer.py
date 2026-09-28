@@ -22,6 +22,7 @@ filter the candidate list before peptide enumeration.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Callable
@@ -680,7 +681,21 @@ def score_variant(
     ``conservation_lookup(chrom, pos)`` (pos defaults to ``position``
     if not supplied separately). If any of the DNA-level arguments
     are missing, the corresponding lookup is skipped silently.
+
+    .. __deprecated__
+        The kwargs API on ``score_variant()`` is deprecated as of
+        v0.32.0 and will be removed in v0.34.0. New code should call
+        ``score_variant_from_inputs(VariantInputs(...))`` instead.
+        The kwargs API still works (no behavioural change) for the
+        duration of the deprecation window.
     """
+    warnings.warn(
+        "score_variant() kwargs API is deprecated as of v0.32.0; "
+        "use score_variant_from_inputs(VariantInputs(...)) instead. "
+        "The kwargs API will be removed in v0.34.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from ._scoring_components import (
         compute_local_components,
         local_rationale,
@@ -994,3 +1009,25 @@ def filter_variants(
         if s.normalized_score >= threshold_score and s.normalized_score >= min_score
     ]
     return keep
+
+
+__all__ = [
+    # Reference data (public so consumers can inspect substitution matrices,
+    # driver-gene lists, hydrophobicity tables — see v0.28's __all__-pass rationale).
+    "BLOSUM62",
+    "DRIVER_GENES",
+    "HYDROPHOBICITY",
+    "HELIX_PROPENSITY",
+    "STRAND_PROPENSITY",
+    # Inputs / outputs.
+    "VariantScore",
+    "VariantInputs",
+    # Public scoring API.
+    "score_variant",
+    "score_variant_from_inputs",
+    # Filtering (per-variant scoring + top-fraction + min-score threshold).
+    "filter_variants",
+    # Secondary structure (used by v0.27 UTR context + v0.22 components).
+    "predict_secondary_structure",
+    "structural_disruption_penalty",
+]
