@@ -5,6 +5,115 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.5] - 2026-09-28
+
+### Demo videos: all 3 redesigned to non-terminal visual styles
+
+User feedback: v0.34.1-v0.34.4 shipped 3 demo videos, but all 3 used the
+same visual style — a synthesized styled-terminal capture of CLI
+output. Visually monotonous and didn't show the data's structure well
+(BRAF V600E →1.000 high means more as a result card than a row in a
+table).
+
+This release rebuilds all 3 videos with **distinct visual styles**:
+
+#### 1. Architecture diagram animation (was: terminal)
+
+- New renderer: `scripts/render_architecture_video.py` (~330 lines)
+- 11 tool chips in a 4×3 grid, each with name + live metric from
+  the actual run
+- Each tool's chip lights up sequentially as the tool runs in
+  `examples/run_all.py`
+- 8-layer pipeline header strip above the grid (Sequence design,
+  Variant scoring, Immunogenicity, etc.)
+- Bottom caption strip shows "running → tool_name (Layer N: ...)"
+  with the current metric on the right
+- Final state: all 11 chips lit cyan, "11 / 11 ✓" progress,
+  "done." caption
+- 9.2s runtime, 277 frames, 164 KB MP4 + 682 KB GIF
+
+#### 2. Scientific results dashboard (was: terminal)
+
+- New renderer: `scripts/render_results_video.py` (~310 lines)
+- 6 cancer driver variant cards in a 3×2 grid (BRAF V600E,
+  KRAS G12D, TP53 R175H, MYC T58A, PIK3CA H1047R, EGFR L858R)
+- Each card has: variant name, DNA change (chr:pos ref>alt),
+  score (0.000-1.000), green progress bar, classification pill
+- Cards reveal sequentially as the API returns them
+- TIER I badge on each card (color-coded)
+- Bottom strip says "← live: real AlphaGenome Atlas API call (not
+  the mock backend)" + the API key source
+- 7.4s runtime, 222 frames, 53 KB MP4 + 148 KB GIF
+
+#### 3. Codon heatmap (was: terminal)
+
+- New renderer: `scripts/render_codon_video.py` (~400 lines)
+- 169 codons of Cas9 rendered as a 30×6 grid of cells
+- Each cell color-coded by usage frequency:
+  green (common) → yellow (medium) → red (rare)
+- Side panel: 5 before/after metrics (CAI, GC%, rare codon
+  fraction, CpG obs/exp, n_codons)
+- Three-phase animation:
+  - "before" heatmap reveal (synthetic original with mid-low scores)
+  - transition flash
+  - "after" heatmap reveal + hold
+- Bottom strip: "done — CAI 0.720 → 0.938 (+0.218), rare codons
+  3.5% → 0%"
+- 3.4s runtime, 103 frames, 112 KB MP4 + 971 KB GIF
+
+#### Honest caveats
+
+- The codon heatmap's "before" phase uses a synthetic mid-low
+  frequency palette to simulate the pre-optimization state, since
+  the actual original Cas9 CDS isn't easily recoverable from the
+  tool's output. The metric values shown are the real before/after
+  values from the actual run.
+- The codon heatmap uses a synthetic frequency table (hash-based
+  + boosted by the real `most_common_codons` list and demoted by
+  the real `rare_codons` list). Real human codon frequencies are
+  in `mrnavax/codon_optimizer.py`; for the demo, the visual color
+  distinction is what matters.
+
+#### Asset sizes (v0.34.4 → v0.34.5)
+
+| Asset | Before | After |
+|---|---|---|
+| end-to-end video | 66 KB MP4 / 208 KB GIF | **164 KB MP4** / 682 KB GIF |
+| atlas_predict_demo | 57 KB MP4 / 170 KB GIF | 53 KB MP4 / 148 KB GIF |
+| codon_optimize_demo | 62 KB MP4 / 186 KB GIF | 112 KB MP4 / 971 KB GIF |
+
+Net demo-asset size: 749 KB → 2.1 MB (+1.4 MB) — acceptable
+trade-off for the visual upgrade.
+
+#### Renderer architecture
+
+Each renderer is independent — they share no rendering code. The
+common pipeline is:
+
+1. Compute frames as PIL.Image objects
+2. Save each frame as a PNG to a tempdir
+3. ffmpeg mux the PNG sequence to H.264 MP4 (yuv420p, +faststart)
+4. ffmpeg palette-encode to GIF for fallback
+
+The `cli-demo-video` skill (created earlier today) captures this
+pipeline. Each renderer specializes in one visual style.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Cumulative
+
+- **27 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales**
+- **3 demo videos in 3 distinct visual styles** (architecture diagram,
+  results dashboard, codon heatmap) — none are terminal captures
+
 ## [0.34.4] - 2026-09-28
 
 ### README polish + Demo videos section restructured

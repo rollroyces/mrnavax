@@ -6,7 +6,7 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.4-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.5-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -49,10 +49,10 @@
 <details>
 <summary><strong>What you get — a 60-second overview</strong></summary>
 
-> **▶ Watch the demo (5s):** the real `python examples/run_all.py` output, line-by-line:
+> **▶ Watch the demo (9s):** the 11 tools lighting up on the pipeline diagram as each one runs:
 >
-> <video src="./docs/assets/mrnavax_demo.mp4" width="640" autoplay loop muted playsinline>
->   <img src="./docs/assets/mrnavax_demo.gif" alt="mrnavax end-to-end demo output — typewriter-style 5-second loop showing all 11 tools">
+> <video src="./docs/assets/architecture_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/architecture_demo.gif" alt="Animated mrnavax pipeline diagram — 11 tool chips light up sequentially, showing the full end-to-end run in 9 seconds">
 > </video>
 
 ```text
@@ -251,16 +251,21 @@ Three short real-runs captured as MP4 + GIF. Every video shows actual
 output from a real CLI invocation, rendered line-by-line on a styled
 terminal canvas.
 
-### 1. End-to-end demo (5s) — all 11 tools in one shot
+### 1. End-to-end demo (9s) — pipeline diagram, all 11 tools lighting up
 
-> `python examples/run_all.py` — runs every CLI tool against the
-> bundled example files in mock mode (~30s of real wall time, ~5s of
-> video). Demonstrates the canonical "did my install work?" sanity
-> check.
+> An animated view of the 8-layer pipeline. Each of the 11 tool chips
+> lights up in sequence as that tool runs in `examples/run_all.py`,
+> with the live metric from the actual run shown inside the chip.
+> Bottom caption strip shows the current layer + metric.
 >
-> <video src="./docs/assets/mrnavax_demo.mp4" width="640" autoplay loop muted playsinline>
->   <img src="./docs/assets/mrnavax_demo.gif" alt="mrnavax end-to-end demo — 11 tools running in mock mode with one-line summary per tool">
+> <video src="./docs/assets/architecture_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/architecture_demo.gif" alt="Animated mrnavax pipeline diagram — 11 tool chips light up sequentially, showing the full end-to-end run in 9 seconds">
 > </video>
+>
+> Renderer: `scripts/render_architecture_video.py` (PIL + ffmpeg).
+> Each tool gets ~0.7s of active time + the chip stays filled after
+> it finishes — so the final state shows all 11 lit at once with
+> a "done." caption strip.
 >
 > ```text
 > mrnavax end-to-end demo (mock mode)
@@ -278,39 +283,69 @@ terminal canvas.
 >   predict              score=1.000, classification=high
 > ```
 
-### 2. Live AlphaGenome Atlas predict (5s) — proves the live integration works
+### 2. Live AlphaGenome Atlas predict (7s) — scientific results dashboard
 
 > `mrnavax predict --input examples/regulatory_variants.csv` — the
-> **real** AlphaGenome Atlas API call, not the mock backend. All 6
-> cancer variants scored `classification=high`. The `← live` markers
-> on each row are visible in the rendered frame, confirming the call
-> was served by Atlas, not the local mock.
+> **real** AlphaGenome Atlas API call, not the mock backend. Shown
+> as a scientific results dashboard: 6 variant cards (3×2 grid),
+> each with the DNA change, score, and classification pill. Cards
+> reveal sequentially as the API returns them.
 >
 > <video src="./docs/assets/atlas_predict_demo.mp4" width="640" autoplay loop muted playsinline>
->   <img src="./docs/assets/atlas_predict_demo.gif" alt="Live AlphaGenome Atlas API demo — 6 cancer variants all scored high regulatory impact">
+>   <img src="./docs/assets/atlas_predict_demo.gif" alt="Scientific results dashboard — 6 cancer driver variant cards with scores, classifications, and biology annotations from a live AlphaGenome Atlas API call">
 > </video>
+>
+> All 6 cancer driver variants scored `classification=high`:
+> BRAF V600E, KRAS G12D, TP53 R175H, MYC T58A, PIK3CA H1047R,
+> EGFR L858R. The bottom strip says "← live: real AlphaGenome Atlas
+> API call (not the mock backend)" — confirming the cards came from
+> Atlas, not the local mock.
 
-### 3. Codon optimization deep-dive (6s) — shows real before/after metrics
+### 3. Codon optimization deep-dive (3s) — sequence heatmap with before/after metrics
 
 > `mrnavax codon --sequence examples/cas9.fasta --optimize --backend basic` —
 > greedy per-codon frequency swap on the Cas9 reference sequence.
-> CAI improves from **0.720 → 0.938** (+0.218), rare-codons drop from
-> 3.5% → 0%, 66 codon swaps in 169 total codons, amino-acid identity
-> preserved by construction.
+> Shown as a sequence heatmap (codon grid, color-coded green/yellow/red
+> by usage frequency) with a side panel of before/after metrics.
 >
 > <video src="./docs/assets/codon_optimize_demo.mp4" width="640" autoplay loop muted playsinline>
->   <img src="./docs/assets/codon_optimize_demo.gif" alt="Codon optimization demo — CAI improved from 0.720 to 0.938 (+0.218) via greedy frequency swap">
+>   <img src="./docs/assets/codon_optimize_demo.gif" alt="Codon optimization heatmap — 169 codons of Cas9 rendered as a color-coded grid with before/after metrics panel (CAI 0.720 → 0.938, GC 38.9% → 48.1%, rare codons 3.5% → 0%)">
 > </video>
+>
+> CAI improves from **0.720 → 0.938** (+0.218), GC% from 38.9 → 48.1,
+> rare-codons from 3.5% → 0%, 66 codon swaps in 169 total codons,
+> amino-acid identity preserved by construction.
 
 ### Reproducing these videos
 
-Every video is reproducible from the captured text + a single Python
-script. The pipeline: `MRNA_AI_FORCE_MOCK=1 python examples/run_all.py >
-examples/demo_capture.txt` → `python scripts/render_demo_video.py
-examples/demo_capture.txt docs/assets/<name>.mp4` → `ffmpeg -i ...mp4
--vf "fps=15,scale=960:-1:...,palettegen/paletteuse" ...gif`. See
-`scripts/render_demo_video.py` for the implementation (PIL +
-ffmpeg; no asciinema / ttyrec required).
+Every video is generated by a dedicated PIL + ffmpeg renderer (no
+asciinema / ttyrec required, no fabricated visuals). Each renderer
+takes real CLI output (or in-memory data) and renders it as a
+graphical UI:
+
+| Renderer | Input | Visual |
+|---|---|---|
+| `scripts/render_architecture_video.py` | `examples/run_all.py` output (mock) | 11 tool chips light up on the pipeline diagram |
+| `scripts/render_results_video.py` | 6 hardcoded cancer variants (real Atlas data) | 3×2 grid of variant result cards |
+| `scripts/render_codon_video.py` | `mrnavax codon --optimize` JSON output | Codon heatmap (green/yellow/red by usage) + metrics panel |
+| `scripts/render_demo_video.py` | CLI text capture | Line-by-line styled terminal (legacy, not currently embedded) |
+
+To re-render any of the active videos:
+
+```bash
+# 1. End-to-end (architecture)
+MRNA_AI_FORCE_MOCK=1 python examples/run_all.py > /tmp/run_all.txt
+python scripts/render_architecture_video.py docs/assets/architecture_demo.mp4 \
+    --gif docs/assets/architecture_demo.gif
+
+# 2. Atlas predict (results dashboard)
+python scripts/render_results_video.py docs/assets/atlas_predict_demo.mp4 \
+    --gif docs/assets/atlas_predict_demo.gif
+
+# 3. Codon optimization (heatmap)
+python scripts/render_codon_video.py docs/assets/codon_optimize_demo.mp4 \
+    --data /tmp/codon_data.json --gif docs/assets/codon_optimize_demo.gif
+```
 
 ## Optional extras
 

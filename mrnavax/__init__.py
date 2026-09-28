@@ -3,4 +3,4 @@
 Renamed from mrna-ai-toolkit to mrnavax.
 """
 
-__version__ = "0.34.4"
+__version__ = "0.34.5"
