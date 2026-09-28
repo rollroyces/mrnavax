@@ -393,3 +393,16 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(_run_cli(sys.argv[1:]))
+
+
+__all__ = [
+    # Reference data tables.
+    "HUMAN_CODON_FREQ",
+    "CODON_TO_AA",
+    # Result dataclass.
+    "CodonReport",
+    # Public API.
+    "analyze_cds",
+    "optimize_basic",
+]
+

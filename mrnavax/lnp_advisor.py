@@ -258,3 +258,15 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(_run_cli(sys.argv[1:]))
+
+
+__all__ = [
+    # Preset dataclass + curated LNP formulation table.
+    "LNPPreset",
+    "PRESETS",
+    # Decision-matrix dataclass.
+    "LNPAdvice",
+    # Public API.
+    "recommend",
+]
+

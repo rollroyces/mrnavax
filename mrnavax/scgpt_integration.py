@@ -330,3 +330,21 @@ def embed_with_scgpt(
             out = model(x)  # (b, d_hid)
             embeddings.extend(out.cpu().tolist())
     return embeddings
+
+
+__all__ = [
+    # Cache / file-path constants.
+    "DEFAULT_CACHE_DIR",
+    "SCGPT_VOCAB_PATH",
+    "SCGPT_ARGS_PATH",
+    "SCGPT_WEIGHTS_PATH",
+    # Config dataclass + vocab loader.
+    "ScGPTConfig",
+    "load_vocab",
+    # Availability check.
+    "scgpt_available",
+    # Preprocessing + inference API.
+    "bin_expression",
+    "embed_with_scgpt",
+]
+

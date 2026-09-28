@@ -234,7 +234,7 @@ def _openai_complete(
         raise RuntimeError(f"unexpected OpenAI response: {data}") from e
 
 
-def llm_json(prompt: str, **kwargs: Any) -> dict[str, Any]:
+def llm_json(prompt: str, **kwargs: Any) -> dict[str, Any]:  # noqa: ANN401
     """Convenience: call ``llm_complete`` with json_mode=True and parse."""
     raw = llm_complete(prompt, json_mode=True, **kwargs)
     # Strip code fences if any

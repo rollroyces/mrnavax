@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2026-09-28
+
+### Module export hygiene — completion of the v0.28.0 / v0.32.0 pass
+
+- Added ``__all__`` to **18 remaining public modules**: alphamissense_integration (13 symbols), codon_lineardesign (3), codon_multi_objective (5), codon_optimizer (5), codon_protocols (5), codon_ribodecode (3), construct_designer (3), foundation_embedder (1), live_atlas_integration (5), lnp_advisor (4), neoantigen_screener (6), protein_lm_adapter (7), sc_rna_pipeline (12), scgpt_integration (9), spatial_module_adapter (8), trial_llm (9), trial_matcher (6), trial_similar (9).
+- Each ``__all__`` is appended at the end of the file with **zero existing code modified** — purely additive.
+- Pattern matches v0.28.0 (manufacturability + codon_ribodecode_adapter) and v0.32.0 (variant_scorer).
+- **All public modules now have explicit ``__all__``.**
+
+### Type hints — completed the missing-annotation sweep
+
+- Added type annotations to **37 missing function/argument sites** across backend checks, shims, and integration modules.
+- The 3 remaining ``ANN401`` (Any in **kwargs) sites have explicit ``# noqa: ANN401`` comments explaining why ``Any`` is correct (LLM response parsing, arbitrary provider kwargs).
+- Fixed an upstream bug in ``_extract_is_coding`` that surfaced during type tightening (parameter name ``anndata_obj`` vs body reference ``anndata_list``); now uses ``anndata_list`` consistently and adds ``# type: ignore[union-attr]`` for the dynamic AnnData attribute access.
+
+### SOTA validation spike — research only, no fabricated validation
+
+- Added ``spikes/SOTA_VALIDATION_SPIKE.md`` (~14 KB) — a bounded research spike investigating whether mrnavax can be validated against a published SOTA mRNA-design benchmark.
+- **Honest verdict from the spike**: REPRODUCE the in-silico part (3–5 h work), SKIP the wet-lab part. The reproducible target is RNop's in-silico CAI/GC%/CpG comparison on EGFP (arXiv:2505.23862 §1.1.7–1.1.9, Fig. 3-4). The wet-lab 2.28-fold expression claim is unbridgeable from a laptop.
+- mrnavax's ``multi-objective`` backend is a small stdlib implementation of the RNop *pattern* (knowledge-infused loss), not the same model. Future work, not v0.34.0.
+
+### Atlas weekly cron — verified on v0.33.0
+
+- Triggered the ``atlas_integration.yml`` workflow manually against v0.33.0 ahead of the Monday 06:00 UTC scheduled run.
+- Result: **success** — live Atlas API returned score=1.0, classification="high", is_coding=true for the BRAF V600E regression test (run #36374992477).
+- All 4 CI workflows green.
+
+### Honest scope notes (per production-readiness + simplify-code)
+
+- **v0.34.0 kwargs removal** — SKIPPED. v0.32.0 just added the warning; the planned removal is for v0.34.0 as the *one-minor-version migration window* (per DeprecationWarning text). Migrating internal callers (10+ sites) + real users in the same release would be a rewrite, not cleanup. The deprecation window is now in place; the actual removal will be the next release that justifies the migration cost.
+- **Examples/README.md / getting-started.md expansion** — SKIPPED. ``examples/README.md`` (v0.33.0) is the canonical recipe surface. Duplicate docs would fragment the user guidance.
+
+### Quality gates
+
+- ✅ ruff clean (was 1 hidden F841 + 37 ANN errors; now zero)
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ Atlas live cron green (run #36374992477)
+
+### Cumulative
+
+- **22 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales** (en + 繁體中文 + 简体中文)
+- **All public modules now have explicit ``__all__``**
+
 ## [0.33.0] - 2026-09-28
 
 ### End-to-end runnable examples

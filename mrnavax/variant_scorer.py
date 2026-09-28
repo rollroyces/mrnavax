@@ -593,7 +593,7 @@ class VariantInputs:
         position: int,
         wt_aa: str,
         mut_aa: str,
-        **kwargs,
+        **kwargs: object,
     ) -> "VariantInputs":
         """Build from the same kwargs shape as ``score_variant()``."""
         return cls(
@@ -779,11 +779,11 @@ def score_variant(
 
 
 def _combine_components(
-    local,
-    am,
-    avi,
-    cons,
-    utr_ctx=None,
+    local: float,
+    am: float | None,
+    avi: float | None,
+    cons: float | None,
+    utr_ctx: float | None = None,
 ) -> tuple[float, dict]:
     """Combine the 4 (or 5, when ``utr_ctx`` is supplied) scoring
     components into a single raw score + components dict.

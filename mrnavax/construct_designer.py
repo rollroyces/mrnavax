@@ -361,3 +361,13 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(_run_cli(sys.argv[1:]))
+
+
+__all__ = [
+    # Configuration + result dataclasses.
+    "ConstructConfig",
+    "ConstructResult",
+    # Public API.
+    "design_construct",
+]
+

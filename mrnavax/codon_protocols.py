@@ -187,3 +187,15 @@ class CodonOptimizer(Protocol):
     """
 
     def optimize(self, req: RiboDecodeRequest) -> RiboDecodeResult: ...
+
+
+__all__ = [
+    # Input/output dataclasses.
+    "RiboDecodeRequest",
+    "RiboDecodeResult",
+    "TranslationPrediction",
+    # Protocol interfaces.
+    "TranslationPredictor",
+    "CodonOptimizer",
+]
+

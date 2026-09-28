@@ -101,7 +101,7 @@ def _check_case_study() -> tuple[bool, str]:
     idx = build_test_index()
     mock_avi = MockRegulatoryVariantScorer()
 
-    def scorer(variant):
+    def scorer(variant: dict) -> float:
         # The curated CSV is hg38-coordinates only; we use placeholder
         # AAs (V/E) for coding variants and A/G for regulatory. The
         # BLOSUM62 + AM/AVI signal still carries the priority.
@@ -204,7 +204,7 @@ def _check_conservation_phylop() -> tuple[bool, str]:
     from mrnavax.alphagenome_integration import MockRegulatoryVariantScorer
     from mrnavax.alphamissense_integration import AlphaMissenseResult
 
-    def am_coding(uniprot, wt, pos, mut):
+    def am_coding(uniprot: str, wt: str, pos: int, mut: str) -> AlphaMissenseResult:
         return AlphaMissenseResult(
             score=0.9, classification="likely_pathogenic",
             uniprot=uniprot, aa_change=f"{wt}{pos}{mut}",
@@ -233,7 +233,7 @@ def _check_conservation_phylop() -> tuple[bool, str]:
         bad.append("composed: PhyloP missing")
 
     # 6. Silent on error
-    def raises(*args):
+    def raises(*args: object) -> None:
         raise RuntimeError("UCSC down")
 
     r_err = score_variant(

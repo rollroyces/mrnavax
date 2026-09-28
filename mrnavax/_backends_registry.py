@@ -26,7 +26,7 @@ from typing import Callable
 CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = []
 
 
-def register(name: str):
+def register(name: str) -> Callable[..., Callable[..., object]]:
     """Decorator that appends ``(name, fn)`` to ``CHECKS``.
 
     Each family module uses this at module load time:

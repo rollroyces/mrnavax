@@ -152,3 +152,10 @@ def embed_cells(
     if model == "tfidf-svd":
         return _tfidf_svd_embed(matrix, n_components=n_components, seed=seed)
     raise ValueError(f"unknown model: {model!r}")
+
+
+__all__ = [
+    # Public API.
+    "embed_cells",
+]
+

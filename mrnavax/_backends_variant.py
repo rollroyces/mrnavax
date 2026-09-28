@@ -83,7 +83,7 @@ def _check_alphagenome_atlas() -> tuple[bool, str]:
 
     # 6. AVI integration into score_variant
     # 6a. Coding variant: AM dominates, AVI is secondary
-    def am_coding(uniprot, wt, pos, mut):
+    def am_coding(uniprot: str, wt: str, pos: int, mut: str) -> AlphaMissenseResult:
         return AlphaMissenseResult(
             score=0.9,
             classification="likely_pathogenic",

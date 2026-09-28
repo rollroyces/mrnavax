@@ -356,3 +356,20 @@ def llm_matching_available() -> bool:
     if os.environ.get("MRNA_AI_LLM_BACKEND", "auto").lower() in {"mock", "auto"}:
         return True
     return False
+
+
+__all__ = [
+    # Verdict string constants.
+    "VERDICT_MET",
+    "VERDICT_UNMET",
+    "VERDICT_UNCERTAIN",
+    "VALID_VERDICTS",
+    # Dataclasses.
+    "CriterionVerdict",
+    "TrialMatchResult",
+    # Public API.
+    "build_match_prompt",
+    "score_trial_with_llm",
+    "llm_matching_available",
+]
+

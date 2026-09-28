@@ -350,3 +350,17 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(_run_cli(sys.argv[1:]))
+
+
+__all__ = [
+    # Reference data (heuristic HLA-A*02:01 anchor matrix).
+    "A0201_ANCHORS",
+    # Dataclasses.
+    "NeoantigenCall",
+    "ScreenReport",
+    # Public API.
+    "screen_peptide_llm",
+    "screen_csv",
+    "lm_immunogenicity_score",
+]
+

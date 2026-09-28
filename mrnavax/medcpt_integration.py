@@ -97,7 +97,7 @@ def medcpt_available() -> tuple[bool, str]:
     return _AVAILABLE, _AVAIL_ERROR
 
 
-def _load_models():
+def _load_models() -> tuple[object, object]:
     """Lazy-load MedCPT encoders. Idempotent and thread-safe."""
     global _QUERY_MODEL, _ARTICLE_MODEL, _QUERY_TOKENIZER, _ARTICLE_TOKENIZER
     if _QUERY_MODEL is not None:
@@ -146,7 +146,7 @@ def retrieve_medcpt(patient_text: str, trial_texts: list[str]) -> list[float]:
 
     import math
 
-    def cos(a, b):
+    def cos(a: list[float], b: list[float]) -> float:
         na = math.sqrt(sum(x * x for x in a)) or 1e-9
         nb = math.sqrt(sum(x * x for x in b)) or 1e-9
         return sum(x * y for x, y in zip(a, b)) / (na * nb)

@@ -411,3 +411,21 @@ def load_default_demo_store() -> DemoStore:
             except (json.JSONDecodeError, KeyError, ValueError):
                 continue
     return DemoStore(demos=[])
+
+
+__all__ = [
+    # Default config constants.
+    "DEFAULT_TOPK",
+    "ENV_TOPK",
+    "ENV_ENABLED",
+    "ENV_DEMOS",
+    # Few-shot prompt header.
+    "FEWSHOT_HEADER",
+    # Dataclasses.
+    "DemoCase",
+    "DemoStore",
+    # Public API.
+    "build_simicl_prompt",
+    "load_default_demo_store",
+]
+

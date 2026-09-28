@@ -97,7 +97,7 @@ def _resolve_api_key() -> str:
     return ""
 
 
-def _extract_score(anndata_obj) -> float:
+def _extract_score(anndata_obj: object) -> float:
     """Extract a single score from a scorer output AnnData.
 
     For a 1-row AnnData with two columns (REF and ALT tracks), the
@@ -125,8 +125,8 @@ def _extract_score(anndata_obj) -> float:
         return 0.0
 
 
-def _extract_is_coding(anndata_list) -> bool:
-    """True if the variant position overlaps a protein_coding gene exon.
+def _extract_is_coding(anndata_list: object) -> bool:
+    """True if any scorer returned a protein_coding gene overlap.
 
     Atlas returns a 16kb window centered on the variant; the gene-overlap
     scorers (typically scorers 7-11 of 19) include ``gene_type`` in
@@ -148,7 +148,7 @@ def _extract_is_coding(anndata_list) -> bool:
     protein_coding gene; use the AVI ``score`` + ``classification`` as
     the authoritative regulatory impact signal.
     """
-    for ad in anndata_list:
+    for ad in anndata_list:  # type: ignore[union-attr]
         try:
             if "gene_type" in ad.obs.columns:
                 types = ad.obs["gene_type"].astype(str).tolist()

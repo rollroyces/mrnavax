@@ -281,3 +281,14 @@ def optimize_ribodecode(
         weights=weights,
         note=note,
     )
+
+
+__all__ = [
+    # Default penalty weights.
+    "DEFAULT_WEIGHTS",
+    # Result dataclass.
+    "OptimizationResult",
+    # Public API.
+    "optimize_ribodecode",
+]
+

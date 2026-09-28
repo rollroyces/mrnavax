@@ -336,3 +336,15 @@ def multi_objective_optimize(
         n_changes=n_changes,
         config=config,
     )
+
+
+__all__ = [
+    # Configuration + result dataclasses.
+    "MultiObjectiveConfig",
+    "ComponentBreakdown",
+    "MultiObjectiveResult",
+    # Public API.
+    "multi_objective_score",
+    "multi_objective_optimize",
+]
+

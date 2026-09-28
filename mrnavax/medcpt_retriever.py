@@ -179,7 +179,7 @@ def retrieve_dense(
         "biomarkers": 2.0,
     }
 
-    def _safe_text(v) -> str:
+    def _safe_text(v: object) -> str:
         if isinstance(v, str):
             return v
         if isinstance(v, (list, tuple)):

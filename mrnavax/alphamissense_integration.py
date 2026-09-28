@@ -310,3 +310,26 @@ def build_test_index() -> dict[str, AlphaMissenseResult]:
             aa_change="R248Q",
         ),
     }
+
+
+__all__ = [
+    # Path / cache constants.
+    "CACHE_DIR",
+    "CACHE_FILE",
+    "TSV_FILENAME",
+    "TSV_GZ_FILENAME",
+    "TSV_URL",
+    # Reference tables.
+    "UNIPROT_TO_GENE",
+    # Classification thresholds (paper, supplementary).
+    "THRESHOLD_PATHOGENIC",
+    "THRESHOLD_BENIGN",
+    # Public dataclass (result of one lookup).
+    "AlphaMissenseResult",
+    # Public API.
+    "alphamissense_available",
+    "load_index",
+    "lookup",
+    "build_test_index",
+]
+

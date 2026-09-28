@@ -628,3 +628,27 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(_run_cli(sys.argv[1:]))
+
+
+__all__ = [
+    # Variant + result dataclasses.
+    "Variant",
+    "TumorPeptide",
+    "PipelineReport",
+    # IO.
+    "load_variants",
+    "load_protein_fasta",
+    "load_protein_fasta_detailed",
+    # Peptide enumeration.
+    "mutant_peptides",
+    # Clustering.
+    "kmedoids",
+    "cluster_with_scanpy",
+    # Expression matrix IO.
+    "load_expression",
+    # Foundation-model embedding plug point.
+    "embed_with_foundation_model",
+    # Main pipeline.
+    "run_pipeline",
+]
+

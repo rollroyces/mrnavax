@@ -463,3 +463,16 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+__all__ = [
+    # Stable BRAF V600E test variant.
+    "DEFAULT_VARIANT",
+    # Report dataclass.
+    "LiveAtlasReport",
+    # Helpers / entry points.
+    "compare_to_baseline",
+    "run_live_atlas_check",
+    "main",
+]
+

@@ -395,3 +395,17 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(_run_cli(sys.argv[1:]))
+
+
+__all__ = [
+    # Trial data dataclasses.
+    "Trial",
+    "RankedTrial",
+    # Pipeline stages.
+    "retrieve_candidates",
+    "rank",
+    "match",
+    # IO.
+    "load_trials_jsonl",
+]
+

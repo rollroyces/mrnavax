@@ -357,3 +357,14 @@ def optimize_lineardesign(
         elapsed_seconds=round(elapsed, 3),
         n_states_evaluated=n_evaluated,
     )
+
+
+__all__ = [
+    # Default bi-criterion weights.
+    "DEFAULT_WEIGHTS",
+    # Result dataclass.
+    "LinearDesignResult",
+    # Public API.
+    "optimize_lineardesign",
+]
+

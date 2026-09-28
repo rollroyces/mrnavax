@@ -378,3 +378,20 @@ def select_protein_lm_embedder(
     if _check_transformers_available():
         return ESM2Embedder(model_id=model_id)
     return MockProteinLMEmbedder(model_id="mock")
+
+
+__all__ = [
+    # Errors.
+    "ESM2Error",
+    "ESM2NotInstalled",
+    # Reference table.
+    "_ESM2_DIMS",
+    # Adapters.
+    "ESM2Embedder",
+    "MockProteinLMEmbedder",
+    # Downstream classifier (Applm pattern).
+    "ApplmStyleClassifier",
+    # Backend selector.
+    "select_protein_lm_embedder",
+]
+

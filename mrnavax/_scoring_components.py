@@ -56,7 +56,7 @@ class LocalComponents:
     structural_disruption: float
 
 
-def _structural_disruption_for_test(*args, **kwargs):
+def _structural_disruption_for_test(*args: object, **kwargs: object) -> float:
     """Lazy import of structural_disruption_penalty (defined later in
     variant_scorer) so this module has no circular dependency.
 

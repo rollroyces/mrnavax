@@ -367,3 +367,21 @@ def select_spatial_module_backend(
     if rscript_available():
         return STModuleCLIAdapter()
     return MockSpatialModuleBackend()
+
+
+__all__ = [
+    # Path / availability constants.
+    "RSCRIPT_BIN",
+    "STMODULE_SHIM_NAME",
+    # Errors.
+    "STModuleError",
+    "STModuleNotInstalled",
+    # Availability helper.
+    "rscript_available",
+    # Real + mock backends.
+    "STModuleCLIAdapter",
+    "MockSpatialModuleBackend",
+    # Backend selector.
+    "select_spatial_module_backend",
+]
+
