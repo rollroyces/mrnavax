@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.4] - 2026-09-28
+
+### README polish + Demo videos section restructured
+
+This release is pure documentation/UX cleanup — no code or test
+changes. The motivation is that v0.34.1–v0.34.3 added three demo
+videos in scattered `<details>` blocks (one in the hero overview,
+two more in a `### Demo videos` H3 that was mis-placed before the
+`What this is` H2). The result was structurally wrong (an H3 above
+its parent H2) and visually fragmented (3 separate collapsible
+blocks for what's logically one section).
+
+#### What changed
+
+- **New `## Demo videos` H2 section**, placed between Quick start
+  and Optional extras — where users will look for them after
+  following the Quick start recipe. All three videos in clearly
+  numbered subsections with consistent layout:
+
+  1. **End-to-end demo (5s)** — all 11 tools in one shot
+  2. **Live AlphaGenome Atlas predict (5s)** — proves the live integration works
+  3. **Codon optimization deep-dive (6s)** — shows real before/after metrics
+
+  Each subsection has a one-paragraph intro explaining what command
+  produced the output, the embedded `<video>` + GIF fallback pair,
+  and (for #1 and #3) the matching text-mode summary block for
+  raw-Markdown readers.
+- **Removed the mis-placed `### Demo videos` H3** that was sitting
+  before `## What this is` (line 79 in v0.34.3).
+- **TOC updated** — added `[Demo videos](#demo-videos)` entry.
+- **Reproducibility note** — added a short subsection explaining
+  the render pipeline (PIL + ffmpeg, no asciinema required) so the
+  videos aren't a black box.
+
+#### Bugs caught while polishing
+
+These were real drift bugs from earlier releases:
+
+- **Stale "Eight small, runnable tools"** in `## What this is`
+  (line 111). Fixed to **"Eleven small, runnable tools"** to match
+  the actual tool count after v0.26.0 (9), v0.30.0 (10),
+  v0.31.0 (11). This text was unchanged since v0.18.
+- **Missing `variant-regulatory` in `mrnavax --help` description**.
+  The CLI's top-line description listed only 10 of the 11 tools:
+  `(codon / neoantigen / trial / lnp / scrna / manufacture / spatial
+  / construct / utr-design / predict)` — `variant-regulatory` was
+  dropped silently when it was added in v0.19. Fixed the literal
+  in `mrnavax/cli.py` (description string now correctly lists
+  all 11).
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Cumulative
+
+- **26 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales**
+- **3 demo videos** in a single structured section (6 assets total)
+
 ## [0.34.3] - 2026-09-28
 
 ### Two additional demo videos — Atlas predict + codon optimization

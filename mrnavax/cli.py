@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="mrnavax",
         description="mRNA × AI toolkit "
-        "(codon / neoantigen / trial / lnp / scrna / manufacture / spatial / construct / utr-design / predict)",
+        "(codon / variant-regulatory / neoantigen / trial / lnp / scrna / manufacture / spatial / construct / utr-design / predict)",
     )
     sub = p.add_subparsers(dest="tool", required=True)
 

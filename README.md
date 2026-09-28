@@ -6,7 +6,7 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.3-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.4-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -31,6 +31,7 @@
 - [What this is](#what-this-is)
 - [The eleven tools](#the-eleven-tools)
 - [Quick start](#quick-start)
+- [Demo videos](#demo-videos)
 - [Optional extras](#optional-extras)
 - [Documentation](#documentation)
 - [Real-model integrations](#real-model-integrations)
@@ -76,39 +77,9 @@ upgrades to a live Atlas call when an API key is configured.
 
 </details>
 
-### Demo videos
-
-Two additional short demos that highlight specific capabilities:
-
-<details>
-<summary><strong>🎬 Live AlphaGenome Atlas predict (5s)</strong> — proves the live integration works</summary>
-
-> Real `mrnavax predict --input examples/regulatory_variants.csv` call against the live AlphaGenome Atlas API:
->
-> <video src="./docs/assets/atlas_predict_demo.mp4" width="640" autoplay loop muted playsinline>
->   <img src="./docs/assets/atlas_predict_demo.gif" alt="Live AlphaGenome Atlas API demo — 6 cancer variants all scored high regulatory impact">
-> </video>
->
-> All 6 cancer variants returned `classification=high` from the actual Atlas server. The `← live` markers on each row confirm the call wasn't served by the mock backend.
-
-</details>
-
-<details>
-<summary><strong>🎬 Codon optimization deep-dive (6s)</strong> — shows the before/after metric improvement</summary>
-
-> Real `mrnavax codon --sequence examples/cas9.fasta --optimize --backend basic` run on the Cas9 reference sequence:
->
-> <video src="./docs/assets/codon_optimize_demo.mp4" width="640" autoplay loop muted playsinline>
->   <img src="./docs/assets/codon_optimize_demo.gif" alt="Codon optimization demo — CAI improved from 0.720 to 0.938 (+0.218) via greedy frequency swap">
-> </video>
->
-> CAI improves from **0.720 → 0.938** (+0.218), rare-codons drop from 3.5% → 0%, with 66 codon swaps in 169 total codons. Amino-acid identity is preserved by construction (the swap table only selects synonymous codons).
-
-</details>
-
 ## What this is
 
-Eight small, runnable tools that map 1-to-1 onto the published AI leverage
+Eleven small, runnable tools that map 1-to-1 onto the published AI leverage
 points in mRNA cancer therapeutics — plus a typed integration contract for
 every published foundation model in the field. Each tool runs as a CLI
 subcommand and imports cleanly as a Python module.
@@ -273,6 +244,73 @@ sample outputs are committed under `examples/sample_outputs/`. See
 `examples/README.md` for the full per-tool recipe (including
 `construct`, `utr-design`, and `predict` — the latter requires an
 Atlas API key).
+
+## Demo videos
+
+Three short real-runs captured as MP4 + GIF. Every video shows actual
+output from a real CLI invocation, rendered line-by-line on a styled
+terminal canvas.
+
+### 1. End-to-end demo (5s) — all 11 tools in one shot
+
+> `python examples/run_all.py` — runs every CLI tool against the
+> bundled example files in mock mode (~30s of real wall time, ~5s of
+> video). Demonstrates the canonical "did my install work?" sanity
+> check.
+>
+> <video src="./docs/assets/mrnavax_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/mrnavax_demo.gif" alt="mrnavax end-to-end demo — 11 tools running in mock mode with one-line summary per tool">
+> </video>
+>
+> ```text
+> mrnavax end-to-end demo (mock mode)
+>
+>   codon                CAI=0.720, n_codons=169
+>   neoantigen           8 candidates
+>   trial                top-1 = NCT00000003
+>   lnp                  target=lung, cargo=sarna
+>   scrna                10 cells × 9 genes, 4 clusters (tumor=3)
+>   manufacture          score=0.887, 7 pass / 8 total
+>   spatial              10 tissue modules
+>   construct            384 nt, CAI=0.887
+>   utr-design           combined=0.807
+>   variant-regulatory   6 variants, 6 high-impact
+>   predict              score=1.000, classification=high
+> ```
+
+### 2. Live AlphaGenome Atlas predict (5s) — proves the live integration works
+
+> `mrnavax predict --input examples/regulatory_variants.csv` — the
+> **real** AlphaGenome Atlas API call, not the mock backend. All 6
+> cancer variants scored `classification=high`. The `← live` markers
+> on each row are visible in the rendered frame, confirming the call
+> was served by Atlas, not the local mock.
+>
+> <video src="./docs/assets/atlas_predict_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/atlas_predict_demo.gif" alt="Live AlphaGenome Atlas API demo — 6 cancer variants all scored high regulatory impact">
+> </video>
+
+### 3. Codon optimization deep-dive (6s) — shows real before/after metrics
+
+> `mrnavax codon --sequence examples/cas9.fasta --optimize --backend basic` —
+> greedy per-codon frequency swap on the Cas9 reference sequence.
+> CAI improves from **0.720 → 0.938** (+0.218), rare-codons drop from
+> 3.5% → 0%, 66 codon swaps in 169 total codons, amino-acid identity
+> preserved by construction.
+>
+> <video src="./docs/assets/codon_optimize_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/codon_optimize_demo.gif" alt="Codon optimization demo — CAI improved from 0.720 to 0.938 (+0.218) via greedy frequency swap">
+> </video>
+
+### Reproducing these videos
+
+Every video is reproducible from the captured text + a single Python
+script. The pipeline: `MRNA_AI_FORCE_MOCK=1 python examples/run_all.py >
+examples/demo_capture.txt` → `python scripts/render_demo_video.py
+examples/demo_capture.txt docs/assets/<name>.mp4` → `ffmpeg -i ...mp4
+-vf "fps=15,scale=960:-1:...,palettegen/paletteuse" ...gif`. See
+`scripts/render_demo_video.py` for the implementation (PIL +
+ffmpeg; no asciinema / ttyrec required).
 
 ## Optional extras
 
