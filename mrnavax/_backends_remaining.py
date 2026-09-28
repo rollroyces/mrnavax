@@ -605,9 +605,14 @@ def _check_predict_cli() -> tuple[bool, str]:
     if proc.returncode == 0:
         try:
             data = json.loads(proc.stdout)
-            score = data.get("score")
             classification = data.get("classification")
-            assert classification in {"low", "moderate", "high"}
+            assert classification in {"low", "moderate", "high"}, (
+                f"unexpected classification: {classification}"
+            )
+            score = data.get("score")
+            assert isinstance(score, (int, float)) and 0.0 <= score <= 1.0, (
+                f"score out of [0, 1]: {score}"
+            )
         except json.JSONDecodeError as exc:
             return False, f"shim returned non-JSON: {exc}"
     else:
