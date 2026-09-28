@@ -6,13 +6,69 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.1-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
 [![Protocol adapters](https://img.shields.io/badge/adapters-9%20real%20models-purple)](https://github.com/rollroyces/mrnavax/tree/main/mrnavax)
 
 ![mrnavax pipeline — codon → variant → neoantigen → trial → LNP → manufacture](./docs/assets/pipeline.svg)
+
+<p align="center">
+  <a href="#quick-start"><img alt="quick start" src="https://img.shields.io/badge/quick_start-60s-5dd0ff?style=for-the-badge&logo=rocket"></a>
+  <a href="#the-eleven-tools"><img alt="tools" src="https://img.shields.io/badge/tools-11-9b8cff?style=for-the-badge"></a>
+  <a href="examples/run_all.py"><img alt="demo" src="https://img.shields.io/badge/demo-1_command-success?style=for-the-badge&logo=python"></a>
+  <a href="spikes/SOTA_VALIDATION_SPIKE.md"><img alt="research" src="https://img.shields.io/badge/research-RNop_arXiv_2505.23862-94a3b8?style=for-the-badge"></a>
+</p>
+
+<p align="center">
+  <strong>Try it:</strong> <code>pip install mrnavax</code> · <code>python examples/run_all.py</code> · ships with stdlib-only mocks, opt-in to real models via <code>[extras]</code>
+</p>
+
+<details>
+<summary><strong>Table of contents</strong></summary>
+
+- [What this is](#what-this-is)
+- [The eleven tools](#the-eleven-tools)
+- [Quick start](#quick-start)
+- [Optional extras](#optional-extras)
+- [Documentation](#documentation)
+- [Real-model integrations](#real-model-integrations)
+  - [RiboDecode](#ribodedode-lipt-iliego-et-al-nat-commun-16-9957-2025)
+  - [STModule](#stmodule-wang-et-al-spstio-genome-medicine-17-2025)
+  - [ESM2 + Applm pattern](#esm2--applm-pattern-wong-et-al-2025)
+  - [TrialGPT + Sim-ICL](#trialgpt--sim-icl-jin-2024--fung-2026)
+  - [AlphaGenome Atlas](#alpha-genome-atlas-avsec-et-al-nature-2026)
+- [Architecture](#architecture)
+- [Adding a new tool](#adding-a-new-tool)
+- [License](#license)
+
+</details>
+
+<details>
+<summary><strong>What you get — a 60-second overview</strong></summary>
+
+```text
+mrnavax end-to-end demo (mock mode)
+
+  codon                CAI=0.720, n_codons=169
+  neoantigen           8 candidates
+  trial                top-1 = NCT00000003
+  lnp                  target=lung, cargo=sarna
+  scrna                10 cells × 9 genes, 4 clusters (tumor=3)
+  manufacture          score=0.887, 7 pass / 8 total
+  spatial              10 tissue modules
+  construct            384 nt, CAI=0.887
+  utr-design           combined=0.807
+  variant-regulatory   6 variants, 6 high-impact
+  predict              score=1.000, classification=high     ← live AlphaGenome Atlas call
+
+```
+
+All 11 tools, ~30 seconds, zero model downloads. `predict` upgrades
+to a live Atlas call when an API key is configured.
+
+</details>
 
 ## What this is
 
@@ -62,35 +118,68 @@ flowchart LR
 
 ## The eleven tools
 
-| Tool | What it does | AI leverage layer | Reference work integrated |
-|---|---|---|---|
-| `codon` | Codon analysis + LinearDesign DP + RiboDecode heuristic | Sequence design | CodonBERT, RiboDecode (Li et al., *Nat Commun* 2025), LinearDesign |
-| `neoantigen` | Peptide × HLA binding + ESM2 LM immunogenicity scoring | Variant prioritization | mhcflurry, MedCPT, DeepNeo, NetMHCpan, ESM2 + Applm pattern (Wong et al., 2025) |
-| `trial` | TrialGPT per-criterion LLM matching + Sim-ICL demo selection | Patient-trial matching | TrialGPT (Jin et al., *Nat Commun* 2024) + Sim-ICL (Fung et al., *Genome Biol* 2026) |
-| `scrna` | scRNA-seq → tumor cluster → mutant peptides → ESM2 immunogenicity | Single-cell foundation | scGPT (Cui et al., *Nat Methods* 2024) |
-| `manufacture` | mRNA manufacturability checks (poly-A, Kozak, GC, ARE, stops) | Wet-lab | Industry mRNA design guidelines |
-| `lnp` | LNP composition recommender | Wet-lab | Witten 2025, Li 2024 |
-| `spatial` | STModule spatial-transcriptomics tissue-module identification | Spatial transcriptomics | STModule (Wang et al., *Genome Medicine* 2025) |
-| `variant-regulatory` | AlphaGenome Atlas AVI score for non-coding regulatory variants | Variant prioritization | AlphaGenome Atlas (Avsec et al., *Nature* 2026) |
-| `construct` | Full mRNA construct assembly (5'UTR + CDS + 3'UTR + poly-A) from a protein AA sequence | Therapeutic-mRNA design | mRNA-1273 / BNT162b2 consensus UTRs; multi-objective CDS optimizer (v0.25.0 RNop pattern) |
-| `utr-design` | Coupled 5'UTR + CDS + 3'UTR design: bounded grid search over 12 UTR candidates, picks the highest joint context score | Therapeutic-mRNA design (UTR × CDS coupling) | v0.27.0 UTR context scorer + v0.25.0 multi-objective CDS optimizer (RNop knowledge-infused loss) |
-| `predict` | Live AlphaGenome Atlas regulatory-variant impact prediction (AVI score) — single variant or CSV batch | Variant prioritization | AlphaGenome Atlas (Avsec et al., *Nature* 2026); auto-resolves API key from `ALPHAGENOME_API_KEY` or helper file |
+Each tool runs as both a `mrnavax <tool>` CLI subcommand and an
+importable Python module. Status column shows whether a real-model
+backend is available or only the stdlib mock.
 
-**Real-model adapters behind Protocol contracts** (opt-in via `pip install` extras):
+| Tool | Purpose | Reference work | Backend |
+|------|---------|----------------|---------|
+| [`codon`](docs/tools/codon.md) | Codon analysis (CAI, GC%, rare, structure-proxy) + LinearDesign DP + RiboDecode heuristic | CodonBERT; RiboDecode (Li et al., *Nat Commun* 16:9957, 2025); LinearDesign | 🟢 basic · 🟢 lineardesign · 🟡 ribodecode · 🟡 ribodecode-real |
+| [`neoantigen`](docs/tools/neoantigen.md) | Peptide × HLA binding + ESM2 LM immunogenicity scoring | mhcflurry; MedCPT; DeepNeo; NetMHCpan; ESM2 + Applm pattern (Wong et al., 2025) | 🟢 anchor · 🟡 mhcflurry · 🟡 medcpt |
+| [`trial`](docs/tools/trial.md) | TrialGPT per-criterion LLM matching + Sim-ICL demo selection | TrialGPT (Jin et al., *Nat Commun* 2024) + Sim-ICL (Fung et al., *Genome Biol* 2026) | 🟢 trialgpt · 🟢 trialgpt-simicl · 🟡 llm · 🟡 medcpt |
+| [`scrna`](docs/tools/scrna.md) | scRNA-seq → tumor cluster → mutant peptides → ESM2 immunogenicity | scGPT (Cui et al., *Nat Methods* 2024) | 🟢 stdlib · 🟡 scgpt · 🟡 protein-lm |
+| [`manufacture`](docs/tools/manufacture.md) | mRNA manufacturability checks (poly-A, Kozak, GC, ARE, stops) | Industry mRNA design guidelines (mRNA-1273 / BNT162b2) | 🟢 stdlib only |
+| [`lnp`](docs/tools/lnp.md) | LNP composition recommender (cargo × target × intent) | Witten 2025; Li 2024 | 🟢 stdlib only |
+| [`spatial`](docs/tools/spatial.md) | STModule spatial-transcriptomics tissue-module identification | STModule (Wang et al., *Genome Medicine* 2025) | 🟢 stdlib · 🟡 spatial-r (R/Seurat) |
+| [`variant-regulatory`](#alpha-genome-atlas-avi-and-predict) | AlphaGenome Atlas AVI score for non-coding regulatory variants | AlphaGenome Atlas (Avsec et al., *Nature* 2026) | 🟢 mock · 🟢 atlas-live (with `[variant-alphagenome]`) |
+| [`construct`](docs/tools/construct.md) | Full mRNA construct assembly (5'UTR + CDS + 3'UTR + poly-A) | mRNA-1273 / BNT162b2 consensus UTRs; multi-objective CDS (v0.25.0 RNop pattern) | 🟢 basic · 🟢 lineardesign · 🟡 ribodecode · 🟡 multi-objective |
+| [`utr-design`](docs/tools/utr-design.md) | Coupled 5'UTR + CDS + 3'UTR design: bounded grid search over 12 UTR combinations | v0.27.0 UTR context scorer + v0.25.0 multi-objective CDS optimizer | 🟢 stdlib only |
+| [`predict`](docs/tools/predict.md) | **Live** AlphaGenome Atlas regulatory-variant impact (AVI score) — single variant or CSV batch | AlphaGenome Atlas (Avsec et al., *Nature* 2026); auto-resolves API key | 🟢 atlas-live (with `[variant-alphagenome]` + key) |
 
-- `RiboDecode` → `pip install -e .[ribodecode]` (heavy: ViennaRNA + CUDA via subprocess)
-- `STModule` → `pip install -e .[spatial-r]` (heavy: R + Seurat + torch + CUDA via subprocess)
-- `ESM2 protein-LM` → `pip install -e .[protein-lm]` (heavy: torch + transformers, ~135 MB)
-- `AlphaMissense` → standalone Python pickle index from user-downloaded TSV
-- `scGPT` → `pip install -e .[scrna]` (heavy: torch, ~205 MB)
-- `mhcflurry` → `pip install -e .[neoantigen-mhcflurry]`
-- `MedCPT` → `pip install -e .[neoantigen-medcpt]` or `[trial-medcpt]` (heavy: torch + transformers, ~440 MB)
-- `TrialGPT/OpenAI` → `pip install -e .[llm]`
+**Legend:** 🟢 works out-of-the-box · 🟡 opt-in via `pip install -e '.[extra]'`
 
 Every adapter has a **mock backend** that satisfies the same `runtime_checkable`
 Protocol using only stdlib, so CI runs without downloading any model weights.
 
+**Real-model adapters behind Protocol contracts** (opt-in via `pip install` extras):
+
+| Adapter | Extra | Heavy deps | Status |
+|---------|-------|------------|--------|
+| `RiboDecode` | `[ribodecode]` | ViennaRNA + CUDA via subprocess | stable |
+| `STModule` | `[spatial-r]` | R + Seurat + torch + CUDA | stable |
+| `ESM2 protein-LM` | `[protein-lm]` | torch + transformers, ~135 MB | stable |
+| `AlphaMissense` | standalone pickle | user-downloaded TSV | stable |
+| `scGPT` | `[scrna]` | torch, ~205 MB | stable |
+| `mhcflurry` | `[neoantigen-mhcflurry]` | mhcflurry + data download | stable |
+| `MedCPT` | `[neoantigen-medcpt]` or `[trial-medcpt]` | torch + transformers, ~440 MB | stable |
+| `TrialGPT / OpenAI` | `[llm]` | openai SDK + key | stable |
+| `AlphaGenome Atlas` | `[variant-alphagenome]` | alphagenome package + API key | stable, live |
+
 ## Quick start
+
+> **🚀 Zero to results in 60 seconds:**
+>
+> ```bash
+> pip install mrnavax[variant-alphagenome]
+> git clone https://github.com/rollroyces/mrnavax.git && cd mrnavax
+> python examples/run_all.py
+> ```
+>
+> (drop the `[variant-alphagenome]` extra if you don't have an Atlas API key yet — the demo runs in pure mock mode and skips only the `predict` line)
+
+**Expected output (truncated):**
+
+```text
+mrnavax end-to-end demo (mock mode)
+
+  codon                CAI=0.720, n_codons=169
+  neoantigen           8 candidates
+  trial                top-1 = NCT00000003
+  ...
+  predict              score=1.000, classification=high     ← live AlphaGenome Atlas call
+```
+
+**Step-by-step (for when you want to drive it yourself):**
 
 ```bash
 git clone https://github.com/rollroyces/mrnavax.git

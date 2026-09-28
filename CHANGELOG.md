@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.1] - 2026-09-28
+
+### README UX overhaul
+
+- **Hero section** — added a 4-button badge grid below the pipeline
+  SVG: ``quick start``, ``tools``, ``demo``, ``research``. Each is
+  a clickable shields.io badge linking to the relevant section or
+  artifact (60-second quick start anchor, tools table,
+  ``examples/run_all.py``, SOTA validation spike).
+- **Try-it-oneliner** — added a centered ``<code>pip install
+  mrnavax</code> · python examples/run_all.py · stdlib-only mocks,
+  opt-in to real models via [extras]</code>`` line for immediate
+  affordance.
+- **Table of contents** — added as a collapsible ``<details>``
+  block. GitHub Markdown renders this as a clickable summary.
+- **What you get — 60-second overview** — added the actual
+  ``examples/run_all.py`` output as a collapsible block, so users
+  can see what success looks like before they run anything.
+- **The eleven tools table** — restructured to 4 scannable columns
+  (Purpose / Reference work / Backend) instead of the previous
+  4-column mash. Added status emojis showing which backends work
+  out-of-the-box (🟢) vs. which require ``pip install -e '.[extra]'``
+  (🟡). Each tool name now links to its per-tool doc page.
+- **Real-model adapters table** — converted from bullet list to a
+  4-column table (Adapter / Extra / Heavy deps / Status) for
+  one-glance comparison.
+- **Quick start section** — added a ``🚀 Zero to results in 60
+  seconds`` callout block at the top with the absolute minimum
+  command sequence and an inline note that ``[variant-alphagenome]``
+  is optional. Added an ``Expected output (truncated)`` block
+  showing the first 5 lines of demo output.
+- **Fixed broken link** — ``variant-regulatory`` was linking to
+  ``docs/tools/variant-regulatory.md`` which doesn't exist;
+  repointed to the existing ``#alpha-genome-atlas-avi-and-predict``
+  anchor that explains both the `variant-regulatory` and
+  `predict` CLIs.
+
+### No code or test changes
+
+- 0 source file modifications
+- 0 test changes
+- 0 docs source changes (only README.md and its zh translations)
+- All quality gates still pass
+
 ## [0.34.0] - 2026-09-28
 
 ### Module export hygiene — completion of the v0.28.0 / v0.32.0 pass
