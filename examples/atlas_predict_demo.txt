@@ -1,0 +1,14 @@
+$ mrnavax predict --input examples/regulatory_variants.csv
+
+Live AlphaGenome Atlas — 6 variants scored:
+
+name                    score classification is_coding
+----------------------------------------------------------------
+BRAF_V600E              1.000 high           True     ← live
+KRAS_G12D               1.000 high           True     ← live
+TP53_R175H              1.000 high           True     ← live
+MYC_T58A                1.000 high           True     ← live
+PIK3CA_H1047R           1.000 high           False    ← live
+EGFR_L858R              1.000 high           True     ← live
+
+All 6 cancer variants scored high-impact regulatory. Live call to AlphaGenome Atlas API.

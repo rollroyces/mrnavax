@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.3] - 2026-09-28
+
+### Two additional demo videos — Atlas predict + codon optimization
+
+The v0.34.2 5-second end-to-end demo (mock mode, all 11 tools) is
+useful as a quick overview. But it does not prove the *unique*
+mrnavax capability: **live AlphaGenome Atlas integration**. And it
+does not show what a single-tool deep-dive looks like. This release
+adds two more short videos that fill those gaps.
+
+- **Live Atlas predict demo** (``docs/assets/atlas_predict_demo.mp4``,
+  57 KB / 170 KB, 5s): real ``mrnavax predict --input
+  examples/regulatory_variants.csv`` call against the live AlphaGenome
+  Atlas API. All 6 variants returned ``classification=high`` with
+  ``score=1.000`` from the actual Atlas server. The ``← live`` markers
+  on each row are visible in the rendered frame, confirming the call
+  was not served by the mock backend.
+- **Codon optimization deep-dive** (``docs/assets/codon_optimize_demo.mp4``,
+  62 KB / 186 KB, 6s): real ``mrnavax codon --sequence
+  examples/cas9.fasta --optimize --backend basic`` run. CAI improves
+  from **0.720 → 0.938** (+0.218), rare-codons drop from 3.5% → 0%,
+  with 66 codon swaps in 169 total codons. Amino-acid identity
+  preserved by construction.
+
+### Reusable infrastructure
+
+The same ``scripts/render_demo_video.py`` from v0.34.2 rendered both
+new videos. The pipeline:
+
+1. Capture real CLI output (with the typed command as the first line).
+2. Render to MP4 via PIL + ffmpeg with the same navy + cyan terminal
+   styling as the original demo.
+3. Convert to GIF for Markdown renderers without ``<video>`` support.
+
+New capture artifacts committed for reproducibility:
+- ``examples/atlas_predict_demo.txt`` — 695 bytes
+- ``examples/codon_optimize_demo.txt`` — 595 bytes
+
+### README — new "Demo videos" section
+
+Added a new ``### Demo videos`` H2 right after the existing 60-second
+overview. Each video is wrapped in its own collapsible ``<details>``
+block so users can choose to view them or skip. Total README size
+grew by ~30 lines.
+
+### Decision rationale (per production-readiness + simplify-code)
+
+- **Atlas predict video: SHIPPED.** Live API integration is the
+  unique differentiator vs. other codon / variant-prioritization
+  packages. A video proving it works has high onboarding value.
+- **Codon deep-dive: SHIPPED.** Shows the most-researched pattern
+  (codon optimization) with real before/after metrics.
+- **Construct designer deep-dive: SKIPPED.** The 60-second overview
+  already covers all tools; a construct-specific video would be
+  redundant. Users can run ``mrnavax construct --help`` themselves.
+- **i18n navigation video: SKIPPED.** Visual content cannot be
+  rendered meaningfully in 5 seconds; the i18n docs nav is
+  self-explanatory in the GitHub Pages theme.
+- **CI green video: SKIPPED.** Demonstrates CI status which is
+  visible in the badge grid at the top of the README already.
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+
+### Cumulative
+
+- **25 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales**
+- **3 demo videos** (end-to-end, Atlas predict, codon optimization)
+- **6 demo assets total**: 3 MP4 + 3 GIF, all <500 KB combined
+
 ## [0.34.2] - 2026-09-28
 
 ### 5-second demo video — real `examples/run_all.py` output rendered to MP4

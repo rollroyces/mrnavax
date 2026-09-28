@@ -6,7 +6,7 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.2-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.34.3-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -73,6 +73,36 @@ mrnavax end-to-end demo (mock mode)
 
 All 11 tools, ~30 seconds of real runtime, zero model downloads. `predict`
 upgrades to a live Atlas call when an API key is configured.
+
+</details>
+
+### Demo videos
+
+Two additional short demos that highlight specific capabilities:
+
+<details>
+<summary><strong>🎬 Live AlphaGenome Atlas predict (5s)</strong> — proves the live integration works</summary>
+
+> Real `mrnavax predict --input examples/regulatory_variants.csv` call against the live AlphaGenome Atlas API:
+>
+> <video src="./docs/assets/atlas_predict_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/atlas_predict_demo.gif" alt="Live AlphaGenome Atlas API demo — 6 cancer variants all scored high regulatory impact">
+> </video>
+>
+> All 6 cancer variants returned `classification=high` from the actual Atlas server. The `← live` markers on each row confirm the call wasn't served by the mock backend.
+
+</details>
+
+<details>
+<summary><strong>🎬 Codon optimization deep-dive (6s)</strong> — shows the before/after metric improvement</summary>
+
+> Real `mrnavax codon --sequence examples/cas9.fasta --optimize --backend basic` run on the Cas9 reference sequence:
+>
+> <video src="./docs/assets/codon_optimize_demo.mp4" width="640" autoplay loop muted playsinline>
+>   <img src="./docs/assets/codon_optimize_demo.gif" alt="Codon optimization demo — CAI improved from 0.720 to 0.938 (+0.218) via greedy frequency swap">
+> </video>
+>
+> CAI improves from **0.720 → 0.938** (+0.218), rare-codons drop from 3.5% → 0%, with 66 codon swaps in 169 total codons. Amino-acid identity is preserved by construction (the swap table only selects synonymous codons).
 
 </details>
 
