@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.6] - 2026-09-28
+
+### docs/assets/pipeline.svg redesigned
+
+User feedback (v0.34.5): "the diagram could look better overall".
+The original SVG (added in v0.19) had accumulated several small
+visual debt items over 15 releases:
+
+- "MANUFACTURED mRNA CANCER VACCINE" label in the bottom bar was
+  visually clipped by the m7G cap on the left ("CANCER VA" visible,
+  "CCINE" hidden behind the cap).
+- The bottom construct bar's right-side QC badges ("clean CDS 0.84"
+  + "manufacture check ✓") overlapped each other.
+- The PEPTIDE × HLA glyph was an abstract "U-shape with peptide
+  bars" — readers couldn't tell it was an HLA groove with TCR.
+- The LNP glyph was a tiny circle with a single mRNA rectangle;
+  didn't read as a "lipid nanoparticle".
+- The TITLE row sat at 50px from the top with 78px subtitle,
+  leaving the diagram feeling bottom-heavy.
+- No metadata about the toolkit's current state — a viewer in 2027
+  wouldn't know this is v0.34.5 with 11 tools.
+
+#### What changed
+
+This release replaces pipeline.svg with a full redesign (286 → 410
+lines, 15.6 KB → 20.6 KB):
+
+- **viewBox 1600×540 → 1600×600** — extra height for cleaner
+  vertical rhythm.
+- **Each top-row card now has a colored 4px top-bar accent** —
+  cyan (codon), amber (codon usage), pink (variant), green
+  (peptide), purple (trial), orange (LNP). Better visual hierarchy.
+- **Layer subtitle on each card** ("Layer 1 · sequence design",
+  etc.) — makes the architecture rationale explicit at a glance.
+- **Variant + Trial cards now use horizontal score bars** (was:
+  rows of numbers). Score bars are scannable in <1s; raw numbers
+  required counting rows.
+- **PEPTIDE × HLA glyph rebuilt**: TCR cap (purple trapezoid)
+  sitting on top, HLA alpha helices (curved green tracks) top +
+  bottom, beta sheet platform (gray bar), peptide zigzag inside
+  the groove. Reads as "T-cell recognizing peptide-HLA complex".
+- **LNP glyph rebuilt**: concentric lipid bilayer rings with 12
+  radial lipid tails + inner mRNA payload. Reads as "lipid
+  nanoparticle containing mRNA".
+- **Bottom bar redesigned** to fit properly within its container:
+  MANUFACTURED mRNA CONSTRUCT label has its own column on the
+  left (no more clipping), 5' cap → 5' UTR → Kozak → CDS →
+  3' UTR → poly-A flow uses connector lines (was: abutting
+  rectangles that ran off the right edge in some renderers).
+- **Removed the diagonal "in-vivo feedback" dashed arrow** that
+  was crossing through the LNP / TRIAL / PEPTIDE boxes — added
+  visual noise without conveying actionable information.
+- **Subtitle now reflects the current state**: "8 published AI
+  leverage points · 11 CLI tools · 12 typed model adapters ·
+  stdlib-only mocks". Footer caption shows "v0.34.5 — 11 tools ·
+  12 adapters · 387 tests · 36 backend checks · 3 documentation
+  locales" so future viewers know the version they are looking at.
+
+#### What stayed the same
+
+- 6 top-row stages (codon / codon usage / variant / peptide-HLA /
+  trial / LNP)
+- 1 bottom bar (manufactured mRNA construct)
+- Color palette (cyan / amber / pink / green / purple / orange
+  matching the toolkit's other UI surfaces)
+- 1600-wide canvas (works in README, MkDocs, GitHub Pages)
+- No external assets, no JS, no rasters
+
+#### Verification
+
+- Renders correctly in Chromium (verified via headless screenshot
+  at 2x DPI)
+- Validates as XML (206 elements, valid SVG namespace)
+- Renders identically in MkDocs (no missing fonts; uses system
+  font stack with -apple-system fallback)
+- No code or test changes
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ SVG validates as XML
+
+### Cumulative
+
+- **28 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales**
+- **3 demo videos in 3 distinct visual styles**
+- **New pipeline.svg** with proper visual hierarchy, layer
+  subtitles, and version metadata
+
 ## [0.34.5] - 2026-09-28
 
 ### Demo videos: all 3 redesigned to non-terminal visual styles
