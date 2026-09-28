@@ -1,0 +1,113 @@
+{
+  "platform": "ST",
+  "modules": [
+    {
+      "module_id": 0,
+      "top_genes": [
+        "GAPDH",
+        "USP4",
+        "MAPKAPK2"
+      ],
+      "n_spots": 1,
+      "mean_activity": 1.0
+    },
+    {
+      "module_id": 1,
+      "top_genes": [
+        "CPEB1",
+        "LANCL2",
+        "GAPDH"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.5
+    },
+    {
+      "module_id": 2,
+      "top_genes": [
+        "USP4",
+        "MAPKAPK2",
+        "CPEB1"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.3333
+    },
+    {
+      "module_id": 3,
+      "top_genes": [
+        "LANCL2",
+        "GAPDH",
+        "USP4"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.25
+    },
+    {
+      "module_id": 4,
+      "top_genes": [
+        "MAPKAPK2",
+        "CPEB1",
+        "LANCL2"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.2
+    },
+    {
+      "module_id": 5,
+      "top_genes": [
+        "GAPDH",
+        "USP4",
+        "MAPKAPK2"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.1667
+    },
+    {
+      "module_id": 6,
+      "top_genes": [
+        "CPEB1",
+        "LANCL2",
+        "GAPDH"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.1429
+    },
+    {
+      "module_id": 7,
+      "top_genes": [
+        "USP4",
+        "MAPKAPK2",
+        "CPEB1"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.125
+    },
+    {
+      "module_id": 8,
+      "top_genes": [
+        "LANCL2",
+        "GAPDH",
+        "USP4"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.1111
+    },
+    {
+      "module_id": 9,
+      "top_genes": [
+        "MAPKAPK2",
+        "CPEB1",
+        "LANCL2"
+      ],
+      "n_spots": 1,
+      "mean_activity": 0.1
+    }
+  ],
+  "n_spots": 10,
+  "elapsed_seconds": 0.0,
+  "backend": "mock",
+  "notes": [
+    "mock-backend",
+    "platform=ST",
+    "n_modules=10"
+  ]
+}

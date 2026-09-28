@@ -1,0 +1,79 @@
+{
+  "hla": [
+    "HLA-A*02:01"
+  ],
+  "candidates": [
+    {
+      "peptide": "HMTEVVRRC",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 3298.8,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "TP53_p.R175H: heuristic HLA-A*02:01 anchor matrix",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "SLGSPQEHSY",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 9999.0,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "KRAS_p.G12D: non-9mer skipped",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "KLPGSYRGF",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 1435.9,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "TP53_p.R248W: heuristic HLA-A*02:01 anchor matrix",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "IMVGNQFFMF",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 9999.0,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "KRAS_p.A59T: non-9mer skipped",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "YLHAWFAGF",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 625.0,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "BRAF_HLA: heuristic HLA-A*02:01 anchor matrix",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "KMSAEQYRF",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 3298.8,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "EGFR_p.L858R: heuristic HLA-A*02:01 anchor matrix",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "RLAYVYQKF",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 1435.9,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "PIK3CA_HLA: heuristic HLA-A*02:01 anchor matrix",
+      "source": "heuristic"
+    },
+    {
+      "peptide": "KMRHFAYEF",
+      "hla": "HLA-A*02:01",
+      "binding_affinity_nM": 3298.8,
+      "binder": false,
+      "immunogenicity_score": 0.05,
+      "rationale": "APC_p.R1450*: heuristic HLA-A*02:01 anchor matrix",
+      "source": "heuristic"
+    }
+  ]
+}

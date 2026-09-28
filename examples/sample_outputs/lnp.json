@@ -1,0 +1,51 @@
+{
+  "cargo": "sarna",
+  "target": "lung",
+  "intent": "cancer vaccine",
+  "shortlist": [
+    {
+      "name": "saRNA generic",
+      "ionizable_lipid": "SM-102",
+      "helper_lipid": "DSPC",
+      "cholesterol_pct": 46.0,
+      "peg_lipid": "DMG-PEG2000",
+      "peg_mol_pct": 1.0,
+      "ionizable_mol_pct": 44.0,
+      "helper_mol_pct": 9.0,
+      "n_p_ratio": 6.0,
+      "source": "Arcturus ARCT-154 disclosures / Pollock et al.",
+      "notes": "Higher cholesterol + lower PEG for saRNA stability."
+    },
+    {
+      "name": "FO-32 (pulmonary, ML-designed)",
+      "ionizable_lipid": "FO-32",
+      "helper_lipid": "DOPE",
+      "cholesterol_pct": 24.0,
+      "peg_lipid": "DMG-PEG2000",
+      "peg_mol_pct": 1.0,
+      "ionizable_mol_pct": 60.0,
+      "helper_mol_pct": 10.0,
+      "n_p_ratio": 8.0,
+      "source": "Witten et al. Nat Biotech 2025",
+      "notes": "Top hit from ML-guided screening (>1.6M candidates); ferret-lung delivery."
+    },
+    {
+      "name": "FO-35 (pulmonary, ML-designed)",
+      "ionizable_lipid": "FO-35",
+      "helper_lipid": "DOPE",
+      "cholesterol_pct": 24.0,
+      "peg_lipid": "DMG-PEG2000",
+      "peg_mol_pct": 1.0,
+      "ionizable_mol_pct": 60.0,
+      "helper_mol_pct": 10.0,
+      "n_p_ratio": 8.0,
+      "source": "Witten et al. Nat Biotech 2025",
+      "notes": "Second ML-discovered lipid; also ferret-lung active."
+    }
+  ],
+  "notes": [
+    "Pulmonary delivery benefits from ML-discovered biodegradable lipids (Witten 2025).",
+    "saRNA prefers higher cholesterol and lower PEG for replicon stability.",
+    "For cancer vaccines, MHC-I presentation of encoded antigen is the priority \u2014 clinical SM-102/ALC-0315 work well."
+  ]
+}

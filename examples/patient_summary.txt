@@ -1,0 +1,13 @@
+Patient: PT-EXAMPLE-001
+Age: 58
+Sex: Female
+Diagnosis: Stage IV melanoma, BRAF V600E mutation positive
+ECOG Performance Status: 1
+Prior treatments: First-line anti-PD-1 (pembrolizumab) — progressed after 6 months
+Key biomarkers:
+- BRAF V600E (confirmed by NGS)
+- PD-L1 positive (TPS 30%)
+- LDH: mildly elevated
+Comorbidities: Hypertension (well-controlled on amlodipine), type 2 diabetes (metformin)
+Current medications: None for cancer; metformin, amlodipine
+Notes: Patient is interested in clinical trial enrollment. Discussed second-line options including BRAF/MEK targeted therapy combinations and clinical trials investigating novel combinations.

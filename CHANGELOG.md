@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-09-28
+
+### End-to-end runnable examples
+
+The `examples/` directory was previously **almost empty** (only
+``simicl_demos.json``), while the README's Quick start referenced
+~11 input files that didn't exist. New users following the README
+got "file not found" errors.
+
+This release adds:
+
+- **11 input files** committed under ``examples/``: ``cas9.fasta``,
+  ``tp53_variants.csv``, ``patient_summary.txt``, ``patient_summary.json``,
+  ``trials.jsonl``, ``cells.csv``, ``variants_coding.csv``,
+  ``proteins.fasta``, ``cds_gfp.json``, ``st_bc2_count_matrix.tsv``,
+  ``st_bc2_locations.tsv``, ``regulatory_variants.csv``.
+- **10 sample-output JSON files** committed under
+  ``examples/sample_outputs/`` (one per tool, except ``predict`` which
+  requires a live Atlas API key).
+- **`examples/run_all.py`** — single end-to-end demo script that
+  invokes all 11 tools against the example files in ~30 seconds
+  (mock), or with a live Atlas call when the API key is configured.
+  Verified output:
+
+  ```
+  codon                CAI=0.720, n_codons=169
+  neoantigen           8 candidates
+  trial                top-1 = NCT00000003
+  lnp                  target=lung, cargo=sarna
+  scrna                10 cells × 9 genes, 4 clusters (tumor=3)
+  manufacture          score=0.887, 7 pass / 8 total
+  spatial              10 tissue modules
+  construct            384 nt, CAI=0.887
+  utr-design           combined=0.807
+  variant-regulatory   6 variants, 6 high-impact
+  predict              score=1.000, classification=high
+  ```
+- **`examples/README.md`** — full per-tool recipe doc with copy-paste
+  CLI invocations, sample-output cross-references, and a regenerator
+  bash one-liner.
+- **README.md Quick start fixed**: was referencing
+  ``mrnavax/examples/...`` paths that didn't exist (the package is
+  installed, so ``examples/`` resolves correctly via cwd). All 8
+  Quick-start commands now work end-to-end.
+
+### Honest scope notes (per production-readiness)
+
+- **Premature deprecations (option c from clarify) — skipped.** v0.32.0
+  just added the kwargs deprecation warning; removal is scheduled for
+  v0.34.0. Adding more deprecations before users have a migration
+  window would force them prematurely.
+- **Splitting ``_backends_remaining.py`` (631 lines) — skipped.** Same
+  simplify-code reasoning as v0.32.0's variant_scorer.py decision.
+- **Second case study — skipped.** Examples/CLI recipes cover the
+  same ground as a case study but are more useful (copyable vs.
+  walkthrough).
+
+### Quality gates
+
+- ✅ ruff clean
+- ✅ **387/387 unit tests pass**
+- ✅ **36/36 backend checks**
+- ✅ mkdocs strict 3 locales builds clean
+- ✅ `examples/run_all.py` runs end-to-end (mock + live Atlas predict)
+- ✅ Every Quick-start command in README.md executes successfully
+
+### Cumulative
+
+- **21 substantial releases in 6 days**
+- **11 tools, 12 real-model adapters**
+- **387 unit tests, 36 backend integrity checks**
+- **3 documentation locales**
+- **First release with fully committed, runnable examples**
+
 ## [0.32.0] - 2026-09-28
 
 ### Deprecation cycle begins: score_variant() kwargs API

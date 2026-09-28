@@ -1,0 +1,92 @@
+{
+  "overall_score": 0.8875,
+  "n_pass": 7,
+  "n_warn": 1,
+  "n_error": 0,
+  "checks": [
+    {
+      "name": "poly_a_runs",
+      "pass_": true,
+      "score": 1.0,
+      "severity": "info",
+      "summary": "longest poly-A run = 2 nt; 0 run(s) of length \u22655",
+      "details": {
+        "longest_run": 2,
+        "n_runs": 0,
+        "runs": []
+      }
+    },
+    {
+      "name": "gc_5prime_hairpin",
+      "pass_": true,
+      "score": 1.0,
+      "severity": "info",
+      "summary": "max GC in first 60 nt = 10% at position 27",
+      "details": {
+        "max_gc": 0.1,
+        "max_position": 27
+      }
+    },
+    {
+      "name": "kozak_strength",
+      "pass_": true,
+      "score": 1.0,
+      "severity": "info",
+      "summary": "skipped (no input provided)",
+      "details": {}
+    },
+    {
+      "name": "are_motif",
+      "pass_": true,
+      "score": 1.0,
+      "severity": "info",
+      "summary": "skipped (no input provided)",
+      "details": {}
+    },
+    {
+      "name": "stop_context",
+      "pass_": true,
+      "score": 0.5,
+      "severity": "info",
+      "summary": "stop codon L\"} + follower R; leakiness=0.50 (lower = stronger termination)",
+      "details": {
+        "stop": "L\"}",
+        "follower": "R",
+        "leakiness": 0.5
+      }
+    },
+    {
+      "name": "hidden_stops",
+      "pass_": true,
+      "score": 1.0,
+      "severity": "info",
+      "summary": "no internal in-frame stops",
+      "details": {
+        "n_internal_stops": 0
+      }
+    },
+    {
+      "name": "gc_window_uniformity",
+      "pass_": true,
+      "score": 1.0,
+      "severity": "info",
+      "summary": "GC stddev across 32 sliding windows = 0.062 (mean = 0.116)",
+      "details": {
+        "stddev": 0.06179287479151622,
+        "mean": 0.115625,
+        "n_windows": 32
+      }
+    },
+    {
+      "name": "cpg_balance",
+      "pass_": false,
+      "score": 0.6,
+      "severity": "warn",
+      "summary": "CpG density = 0.000 (target 0.5%-15%)",
+      "details": {
+        "mean_cpg": 0.0,
+        "n_windows": 18
+      }
+    }
+  ]
+}

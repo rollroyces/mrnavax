@@ -6,7 +6,7 @@
 > integrity checks.
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?logo=githubactions&logoColor=white)](https://github.com/rollroyces/mrnavax/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.32.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
+[![PyPI](https://img.shields.io/badge/PyPI-mrnavax%200.33.0-blue?logo=pypi&logoColor=white)](https://pypi.org/project/mrnavax/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later%20%2F%20commercial-orange)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mrnavax.github.io-9cf?logo=readthedocs&logoColor=white)](https://rollroyces.github.io/mrnavax/)
@@ -97,20 +97,23 @@ git clone https://github.com/rollroyces/mrnavax.git
 cd mrnavax
 pip install -e .                   # stdlib-only core
 
+# Or run the full demo across all 11 tools:
+python examples/run_all.py
+
 # 1. Codon analysis (CAI, GC%, rare-codon, GC-window stddev)
-python -m mrnavax.cli codon --sequence mrnavax/examples/cas9.fasta
-python -m mrnavax.cli codon --sequence mrnavax/examples/cas9.fasta \
+python -m mrnavax.cli codon --sequence examples/cas9.fasta
+python -m mrnavax.cli codon --sequence examples/cas9.fasta \
     --optimize --backend lineardesign
 
 # 2. Neoantigen screen (heuristic anchor matrix + LLM immunogenicity)
 python -m mrnavax.cli neoantigen \
-    --variants mrnavax/examples/tp53_variants.csv \
+    --variants examples/tp53_variants.csv \
     --hla HLA-A*02:01
 
 # 3. Patient-to-trial matching (TrialGPT-style, optionally Sim-ICL)
 python -m mrnavax.cli trial \
-    --patient mrnavax/examples/patient_summary.txt \
-    --trials mrnavax/examples/trials.jsonl --top-k 5 \
+    --patient examples/patient_summary.txt \
+    --trials examples/trials.jsonl --top-k 5 \
     --matcher trialgpt-simicl
 
 # 4. LNP composition advice
@@ -118,29 +121,33 @@ python -m mrnavax.cli lnp --target lung --cargo saRNA --intent "cancer vaccine"
 
 # 5. scRNA-seq → neoantigen handoff
 python -m mrnavax.cli scrna \
-    --expression mrnavax/examples/cells.csv \
-    --variants mrnavax/examples/variants_coding.csv \
-    --proteins mrnavax/examples/proteins.fasta \
+    --expression examples/cells.csv \
+    --variants examples/variants_coding.csv \
+    --proteins examples/proteins.fasta \
     --tumor-markers TP53,KRAS,BRAF
 
 # 6. mRNA manufacturability score
-python -m mrnavax.cli manufacture --cds mrnavax/examples/cds_gfp.json
+python -m mrnavax.cli manufacture --cds examples/cds_gfp.json
 
 # 7. Spatial transcriptomics tissue modules
 python -m mrnavax.cli spatial \
-    --count-file mrnavax/examples/st_bc2_count_matrix.tsv \
-    --locations-file mrnavax/examples/st_bc2_locations.tsv \
+    --count-file examples/st_bc2_count_matrix.tsv \
+    --locations-file examples/st_bc2_locations.tsv \
     --platform ST --num-modules 10
 
 # 8. AlphaGenome Atlas regulatory-variant AVI scoring
 python -m mrnavax.cli variant-regulatory \
-    --csv mrnavax/examples/regulatory_variants.csv
+    --csv examples/regulatory_variants.csv
 ```
 
 After `pip install -e .`, the same CLI is also installed as the console
 script `mrnavax`.
 
-Sample outputs for every tool are committed under `examples/sample_outputs/`.
+Every example file referenced above is committed under `examples/`, and
+sample outputs are committed under `examples/sample_outputs/`. See
+`examples/README.md` for the full per-tool recipe (including
+`construct`, `utr-design`, and `predict` — the latter requires an
+Atlas API key).
 
 ## Optional extras
 

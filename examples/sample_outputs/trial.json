@@ -1,0 +1,50 @@
+{
+  "ranked": [
+    {
+      "nct_id": "NCT00000003",
+      "title": "PD-L1 Inhibitor + BRAF/MEK in Melanoma Brain Metastases",
+      "score": 0.0,
+      "eligibility_pct": 0.0,
+      "n_met": 0,
+      "n_total": 0,
+      "reasons": []
+    },
+    {
+      "nct_id": "NCT00000001",
+      "title": "Dabrafenib + Trametinib in BRAF V600E Melanoma",
+      "score": 0.0,
+      "eligibility_pct": 0.0,
+      "n_met": 0,
+      "n_total": 0,
+      "reasons": []
+    },
+    {
+      "nct_id": "NCT00000005",
+      "title": "Anti-PD-1 + Lenvatinib in Advanced Melanoma",
+      "score": 0.0,
+      "eligibility_pct": 0.0,
+      "n_met": 0,
+      "n_total": 0,
+      "reasons": []
+    },
+    {
+      "nct_id": "NCT00000004",
+      "title": "Investigational mRNA Vaccine in Resected Melanoma",
+      "score": 0.0,
+      "eligibility_pct": 0.0,
+      "n_met": 0,
+      "n_total": 0,
+      "reasons": []
+    },
+    {
+      "nct_id": "NCT00000002",
+      "title": "Encorafenib + Binimetinib for BRAF-mutant Solid Tumors",
+      "score": 0.0,
+      "eligibility_pct": 0.0,
+      "n_met": 0,
+      "n_total": 0,
+      "reasons": []
+    }
+  ],
+  "n_candidates_screened": 5
+}

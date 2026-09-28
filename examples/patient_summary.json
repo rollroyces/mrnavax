@@ -1,0 +1,11 @@
+{
+  "patient_id": "PT-EXAMPLE-001",
+  "diagnosis": "Stage IV melanoma",
+  "age": 58,
+  "sex": "F",
+  "performance_status": "ECOG 1",
+  "biomarkers": ["BRAF V600E", "PD-L1 positive (TPS 30%)"],
+  "prior_treatments": ["pembrolizumab"],
+  "current_medications": ["none"],
+  "notes": "Patient progressed after first-line anti-PD-1. Considering targeted therapy combinations."
+}

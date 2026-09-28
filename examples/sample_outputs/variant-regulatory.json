@@ -1,0 +1,37 @@
+{
+  "tool": "variant-regulatory",
+  "backend": "AlphaGenomeCLIAdapter",
+  "n_variants": 6,
+  "results": [
+    {
+      "score": 1.0,
+      "classification": "high",
+      "is_coding": true
+    },
+    {
+      "score": 1.0,
+      "classification": "high",
+      "is_coding": true
+    },
+    {
+      "score": 1.0,
+      "classification": "high",
+      "is_coding": true
+    },
+    {
+      "score": 1.0,
+      "classification": "high",
+      "is_coding": true
+    },
+    {
+      "score": 1.0,
+      "classification": "high",
+      "is_coding": false
+    },
+    {
+      "score": 1.0,
+      "classification": "high",
+      "is_coding": true
+    }
+  ]
+}
